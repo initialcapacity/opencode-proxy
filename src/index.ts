@@ -22,6 +22,7 @@ app.get('/.well-known/opencode', (c) => {
 			env: 'CF_ACCESS_TOKEN',
 		},
 		config: {
+			enabled_providers: ['anthropic', 'openai'],
 			provider: {
 				anthropic: {
 					env: ['CF_ACCESS_TOKEN'],
