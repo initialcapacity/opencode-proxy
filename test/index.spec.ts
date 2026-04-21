@@ -1,29 +1,51 @@
-import {
-	env,
-	createExecutionContext,
-	waitOnExecutionContext,
-	SELF,
-} from "cloudflare:test";
-import { describe, it, expect } from "vitest";
-import worker from "../src/index";
+import { SELF } from 'cloudflare:test';
+import { describe, it, expect } from 'vitest';
 
-// For now, you'll need to do something like this to get a correctly-typed
-// `Request` to pass to `worker.fetch()`.
-const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
+describe('opencode-proxy', () => {
+	describe('GET /.well-known/opencode', () => {
+		it('returns discovery config', async () => {
+			const response = await SELF.fetch('https://opencode.icap.dev/.well-known/opencode');
+			expect(response.status).toBe(200);
 
-describe("Hello World worker", () => {
-	it("responds with Hello World! (unit style)", async () => {
-		const request = new IncomingRequest("http://example.com");
-		// Create an empty context to pass to `worker.fetch()`.
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
-		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
-		await waitOnExecutionContext(ctx);
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+			const body = await response.json();
+			expect(body.auth.command).toEqual([
+				'sh',
+				'-c',
+				'cloudflared access login https://opencode.icap.dev | tail -n 1',
+			]);
+			expect(body.auth.env).toBe('CF_ACCESS_TOKEN');
+			expect(body.config.provider.anthropic.options.baseURL).toBe(
+				'https://opencode.icap.dev/v1/anthropic',
+			);
+			expect(body.config.provider.openai.options.baseURL).toBe(
+				'https://opencode.icap.dev/v1/openai',
+			);
+		});
 	});
 
-	it("responds with Hello World! (integration style)", async () => {
-		const response = await SELF.fetch("https://example.com");
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+	describe('proxy routes', () => {
+		it('rejects requests without authorization', async () => {
+			const response = await SELF.fetch('https://opencode.icap.dev/v1/anthropic/v1/messages', {
+				method: 'POST',
+			});
+			expect(response.status).toBe(401);
+			const body = (await response.json()) as { error: string };
+			expect(body.error).toBe('Missing authorization');
+		});
+
+		it('rejects requests with invalid JWT', async () => {
+			const response = await SELF.fetch('https://opencode.icap.dev/v1/anthropic/v1/messages', {
+				method: 'POST',
+				headers: { Authorization: 'Bearer not-a-valid-jwt' },
+			});
+			expect(response.status).toBe(401);
+		});
+	});
+
+	describe('fallback', () => {
+		it('returns 404 for unknown paths', async () => {
+			const response = await SELF.fetch('https://opencode.icap.dev/unknown');
+			expect(response.status).toBe(404);
+		});
 	});
 });
