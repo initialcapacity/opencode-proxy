@@ -9,9 +9,11 @@ describe('opencode-proxy', () => {
 
 			const body = await response.json();
 			expect(body.auth.command).toEqual([
-				'sh',
-				'-c',
-				'cloudflared access login https://opencode.icap.dev | tail -n 1',
+				'cloudflared',
+				'access',
+				'login',
+				'--no-verbose',
+				'https://opencode.icap.dev',
 			]);
 			expect(body.auth.env).toBe('CF_ACCESS_TOKEN');
 			expect(body.config.provider.anthropic.options.baseURL).toBe(

@@ -18,7 +18,7 @@ app.get('/.well-known/opencode', (c) => {
 
 	return c.json({
 		auth: {
-			command: ['sh', '-c', `cloudflared access login ${host} | tail -n 1`],
+			command: ['cloudflared', 'access', 'login', '--no-verbose', host],
 			env: 'CF_ACCESS_TOKEN',
 		},
 		config: {
@@ -26,15 +26,11 @@ app.get('/.well-known/opencode', (c) => {
 			provider: {
 				anthropic: {
 					env: ['CF_ACCESS_TOKEN'],
-					options: {
-						baseURL: `${host}/v1/anthropic`,
-					},
+					options: { baseURL: `${host}/v1/anthropic` },
 				},
 				openai: {
 					env: ['CF_ACCESS_TOKEN'],
-					options: {
-						baseURL: `${host}/v1/openai`,
-					},
+					options: { baseURL: `${host}/v1/openai` },
 				},
 			},
 		},
@@ -119,12 +115,14 @@ async function verifyAccessJWT(
 // ── Auth middleware for proxy routes ─────────────────────────────────
 
 app.use('/v1/*', async (c, next) => {
+	// Anthropic SDK sends x-api-key, OpenAI SDK sends Authorization: Bearer
 	const authHeader = c.req.header('Authorization');
-	if (!authHeader?.startsWith('Bearer ')) {
+	const apiKeyHeader = c.req.header('x-api-key');
+
+	const token = apiKeyHeader ?? (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined);
+	if (!token) {
 		return c.json({ error: 'Missing authorization' }, 401);
 	}
-
-	const token = authHeader.slice(7);
 
 	try {
 		const payload = await verifyAccessJWT(token, c.env.CF_ACCESS_TEAM_DOMAIN, c.env.CF_ACCESS_AUD);
@@ -161,6 +159,7 @@ async function proxyToGateway(c: any, provider: string): Promise<Response> {
 	// Build forwarded headers, stripping auth/host
 	const headers = new Headers(c.req.raw.headers);
 	headers.delete('authorization');
+	headers.delete('x-api-key');
 	headers.delete('host');
 	headers.set('cf-aig-authorization', `Bearer ${env.CF_AIG_TOKEN}`);
 	headers.set('cf-aig-metadata', JSON.stringify({ userId: hashEmail(email) }));
