@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { createHash } from 'node:crypto';
 
 type Bindings = {
 	CF_ACCESS_TEAM_DOMAIN: string;
@@ -141,10 +140,6 @@ function gatewayUrl(env: Bindings, provider: string, path: string): string {
 	return `https://gateway.ai.cloudflare.com/v1/${env.CF_ACCOUNT_ID}/${env.CF_GATEWAY_NAME}/${provider}${path}`;
 }
 
-function hashEmail(email: string): string {
-	return createHash('sha256').update(email).digest('hex').slice(0, 16);
-}
-
 async function proxyToGateway(c: any, provider: string): Promise<Response> {
 	const env: Bindings = c.env;
 	const email: string = c.get('userEmail' as never);
@@ -162,7 +157,7 @@ async function proxyToGateway(c: any, provider: string): Promise<Response> {
 	headers.delete('x-api-key');
 	headers.delete('host');
 	headers.set('cf-aig-authorization', `Bearer ${env.CF_AIG_TOKEN}`);
-	headers.set('cf-aig-metadata', JSON.stringify({ userId: hashEmail(email) }));
+	headers.set('cf-aig-metadata', JSON.stringify({ userId: email }));
 
 	const resp = await fetch(target, {
 		method: c.req.method,
