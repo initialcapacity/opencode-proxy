@@ -1,4 +1,4 @@
-export const GATEWAY_PROVIDERS = ['anthropic', 'openai', 'workers-ai'] as const;
+export const GATEWAY_PROVIDERS = ['anthropic', 'openai', 'compat'] as const;
 
 export type GatewayProvider = (typeof GATEWAY_PROVIDERS)[number];
 
@@ -15,7 +15,7 @@ type ProviderConfig = {
 const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
 	'ic-anthropic': { gateway: 'anthropic', npm: '@ai-sdk/anthropic', name: 'IC Anthropic' },
 	'ic-openai': { gateway: 'openai', npm: '@ai-sdk/openai', name: 'IC OpenAI' },
-	'ic-workers-ai': { gateway: 'workers-ai', npm: '@ai-sdk/openai-compatible', name: 'IC Workers AI' },
+	'ic-workers-ai': { gateway: 'compat', npm: '@ai-sdk/openai-compatible', name: 'IC Workers AI' },
 };
 
 export const OPENCODE_PROVIDERS = Object.keys(PROVIDER_CONFIG);

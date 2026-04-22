@@ -54,7 +54,7 @@ describe('ModelCatalog', () => {
 	beforeEach(async () => {
 		await env.MODELS.delete('models:anthropic');
 		await env.MODELS.delete('models:openai');
-		await env.MODELS.delete('models:workers-ai');
+		await env.MODELS.delete('models:compat');
 	});
 
 	describe('refresh', () => {
@@ -65,10 +65,15 @@ describe('ModelCatalog', () => {
 
 			const anthropicRaw = await env.MODELS.get('models:anthropic');
 			const openaiRaw = await env.MODELS.get('models:openai');
-			const workersAiRaw = await env.MODELS.get('models:workers-ai');
+			const compatRaw = await env.MODELS.get('models:compat');
 			expect(JSON.parse(anthropicRaw!)).toEqual(modelsDevResponse.anthropic.models);
 			expect(JSON.parse(openaiRaw!)).toEqual(modelsDevResponse.openai.models);
-			expect(JSON.parse(workersAiRaw!)).toEqual(modelsDevResponse['cloudflare-workers-ai'].models);
+			expect(JSON.parse(compatRaw!)).toEqual({
+				'workers-ai/@cf/meta/llama-3.1-8b-instruct': {
+					id: 'workers-ai/@cf/meta/llama-3.1-8b-instruct',
+					name: 'Llama 3.1 8B Instruct',
+				},
+			});
 		});
 
 		it('does not store models for unsupported providers', async () => {

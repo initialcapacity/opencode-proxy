@@ -34,7 +34,7 @@ describe('integration', () => {
 		);
 		expect(body.config.provider['ic-workers-ai'].npm).toBe('@ai-sdk/openai-compatible');
 		expect(body.config.provider['ic-workers-ai'].options.baseURL).toBe(
-			'https://opencode.icap.dev/v1/workers-ai',
+			'https://opencode.icap.dev/v1/compat',
 		);
 	});
 

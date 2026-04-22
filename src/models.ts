@@ -6,11 +6,28 @@ type ModelsDevProvider = {
 	models: Record<string, Record<string, unknown>>;
 };
 
-const MODELS_DEV_KEYS: Record<GatewayProvider, string> = {
-	anthropic: 'anthropic',
-	openai: 'openai',
-	'workers-ai': 'cloudflare-workers-ai',
+type ModelsDevConfig = {
+	key: string;
+	transformId?: (id: string) => string;
 };
+
+const MODELS_DEV_CONFIG: Record<GatewayProvider, ModelsDevConfig> = {
+	anthropic: { key: 'anthropic' },
+	openai: { key: 'openai' },
+	compat: { key: 'cloudflare-workers-ai', transformId: (id) => `workers-ai/${id}` },
+};
+
+function transformModelIds(
+	models: Record<string, Record<string, unknown>>,
+	transform: (id: string) => string,
+): Record<string, Record<string, unknown>> {
+	const result: Record<string, Record<string, unknown>> = {};
+	for (const [id, model] of Object.entries(models)) {
+		const newId = transform(id);
+		result[newId] = { ...model, id: newId };
+	}
+	return result;
+}
 
 function sanitizeModels(
 	models: Record<string, Record<string, unknown>>,
@@ -42,11 +59,12 @@ export class ModelCatalog {
 
 		await Promise.all(
 			GATEWAY_PROVIDERS.map((provider) => {
-				const key = MODELS_DEV_KEYS[provider];
-				const entry = catalog[key];
+				const config = MODELS_DEV_CONFIG[provider];
+				const entry = catalog[config.key];
 				if (!entry?.models) return Promise.resolve();
 				const sanitized = sanitizeModels(entry.models);
-				return this.kv.put(`models:${provider}`, JSON.stringify(sanitized));
+				const models = config.transformId ? transformModelIds(sanitized, config.transformId) : sanitized;
+				return this.kv.put(`models:${provider}`, JSON.stringify(models));
 			}),
 		);
 	}

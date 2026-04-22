@@ -39,7 +39,7 @@ describe('buildDiscoveryPayload', () => {
 		expect(provider.npm).toBe('@ai-sdk/openai-compatible');
 		expect(provider.name).toBe('IC Workers AI');
 		expect(provider.env).toEqual(['CF_ACCESS_TOKEN']);
-		expect((provider.options as Record<string, string>).baseURL).toBe(`${origin}/v1/workers-ai`);
+		expect((provider.options as Record<string, string>).baseURL).toBe(`${origin}/v1/compat`);
 	});
 
 	it('omits models when none are provided', () => {
