@@ -19,6 +19,7 @@ export function landingPage(origin: string) {
 			align-items: center;
 			justify-content: center;
 			gap: 3rem;
+			padding: 2rem;
 		}
 		.logos {
 			display: flex;
@@ -27,6 +28,16 @@ export function landingPage(origin: string) {
 		}
 		.logos svg { height: 28px; width: auto; }
 		.divider { color: #fff; font-size: 1.2rem; user-select: none; }
+		.commands {
+			max-width: 100%;
+			overflow-x: auto;
+		}
+		@media (max-width: 640px) {
+			.commands {
+				mask-image: linear-gradient(to right, #000 85%, transparent);
+				-webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+			}
+		}
 		pre {
 			color: #e0e0e0;
 			font: inherit;
@@ -64,9 +75,11 @@ export function landingPage(origin: string) {
 			<path d="M216 12V18H228V12H216ZM234 24H216V30H234V36H210V6H234V24Z" fill="#F1ECEC"/>
 		</svg>
 	</div>
-	<pre>brew install anomalyco/tap/opencode cloudflared
+	<div class="commands">
+		<pre>brew install anomalyco/tap/opencode cloudflared
 opencode auth login ${origin}
 opencode</pre>
+	</div>
 </body>
 </html>`;
 }
