@@ -17,10 +17,14 @@ export interface AccessJWTPayload {
 
 type KeyFetcher = (teamDomain: string) => Promise<JWK[]>;
 
+const KEY_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
 export class JwtVerifier {
 	private teamDomain: string;
 	private aud: string;
 	private fetchKeys: KeyFetcher;
+	private cachedKeys: JWK[] | undefined;
+	private cachedAt = 0;
 
 	constructor(teamDomain: string, aud: string, fetchKeys?: KeyFetcher) {
 		this.teamDomain = teamDomain;
@@ -37,9 +41,11 @@ export class JwtVerifier {
 
 		if (!payload.aud.includes(this.aud)) throw new Error('Invalid audience');
 		if (payload.iss !== `https://${this.teamDomain}`) throw new Error('Invalid issuer');
-		if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Token expired');
+		if (payload.exp < Math.floor(Date.now() / 1000)) {
+			throw new Error('Token expired — re-run: opencode auth login');
+		}
 
-		const keys = await this.fetchKeys(this.teamDomain);
+		const keys = await this.getKeys();
 		const jwk = keys.find((k) => k.kid === header.kid);
 		if (!jwk) throw new Error('No matching key found');
 
@@ -57,6 +63,15 @@ export class JwtVerifier {
 		if (!valid) throw new Error('Invalid signature');
 
 		return payload;
+	}
+
+	private async getKeys(): Promise<JWK[]> {
+		if (this.cachedKeys && Date.now() - this.cachedAt < KEY_CACHE_TTL_MS) {
+			return this.cachedKeys;
+		}
+		this.cachedKeys = await this.fetchKeys(this.teamDomain);
+		this.cachedAt = Date.now();
+		return this.cachedKeys;
 	}
 
 	private static async fetchAccessPublicKeys(teamDomain: string): Promise<JWK[]> {

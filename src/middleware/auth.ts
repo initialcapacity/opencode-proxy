@@ -11,7 +11,11 @@ type AuthEnv = {
 	};
 };
 
-export function createAuthMiddleware(verifierFactory?: (teamDomain: string, aud: string) => JwtVerifier): MiddlewareHandler<AuthEnv> {
+export function createAuthMiddleware(
+	verifierFactory?: (teamDomain: string, aud: string) => JwtVerifier,
+): MiddlewareHandler<AuthEnv> {
+	let verifier: JwtVerifier | undefined;
+
 	return async (c, next) => {
 		// Anthropic SDK sends x-api-key, OpenAI SDK sends Authorization: Bearer
 		const authHeader = c.req.header('Authorization');
@@ -22,7 +26,7 @@ export function createAuthMiddleware(verifierFactory?: (teamDomain: string, aud:
 			return c.json({ error: 'Missing authorization' }, 401);
 		}
 
-		const verifier = verifierFactory
+		verifier ??= verifierFactory
 			? verifierFactory(c.env.CF_ACCESS_TEAM_DOMAIN, c.env.CF_ACCESS_AUD)
 			: new JwtVerifier(c.env.CF_ACCESS_TEAM_DOMAIN, c.env.CF_ACCESS_AUD);
 

@@ -58,7 +58,25 @@ describe('JwtVerifier', () => {
 		const { verifier, privateKey, kid } = await createVerifier();
 		const token = await signJWT(await validPayload({ exp: 1000 }), privateKey, kid);
 
-		await expect(verifier.verify(token)).rejects.toThrow('Token expired');
+		await expect(verifier.verify(token)).rejects.toThrow('Token expired — re-run: opencode auth login');
+	});
+
+	it('caches keys across calls', async () => {
+		const { publicJWK, privateKey } = await generateKeyPair();
+		let fetchCount = 0;
+		const fetchKeys = async () => {
+			fetchCount++;
+			return [publicJWK as any];
+		};
+		const verifier = new JwtVerifier(TEAM_DOMAIN, AUD, fetchKeys);
+
+		const token1 = await signJWT(await validPayload(), privateKey, publicJWK.kid);
+		const token2 = await signJWT(await validPayload({ email: 'other@example.com' }), privateKey, publicJWK.kid);
+
+		await verifier.verify(token1);
+		await verifier.verify(token2);
+
+		expect(fetchCount).toBe(1);
 	});
 
 	it('rejects a token with no matching key', async () => {

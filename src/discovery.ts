@@ -1,3 +1,5 @@
+import { PROVIDERS } from './providers';
+
 export function buildDiscoveryPayload(origin: string) {
 	return {
 		auth: {
@@ -5,17 +7,10 @@ export function buildDiscoveryPayload(origin: string) {
 			env: 'CF_ACCESS_TOKEN',
 		},
 		config: {
-			enabled_providers: ['anthropic', 'openai'],
-			provider: {
-				anthropic: {
-					env: ['CF_ACCESS_TOKEN'],
-					options: { baseURL: `${origin}/v1/anthropic` },
-				},
-				openai: {
-					env: ['CF_ACCESS_TOKEN'],
-					options: { baseURL: `${origin}/v1/openai` },
-				},
-			},
+			enabled_providers: [...PROVIDERS],
+			provider: Object.fromEntries(
+				PROVIDERS.map((p) => [p, { env: ['CF_ACCESS_TOKEN'], options: { baseURL: `${origin}/v1/${p}` } }]),
+			),
 		},
 	};
 }
