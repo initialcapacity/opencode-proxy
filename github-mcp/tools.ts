@@ -115,7 +115,7 @@ export function createServer(githubToken: string, githubOrg: string): McpServer 
 	const server = new McpServer({ name: 'IC GitHub', version: '1.0.0' });
 	const gh = createGitHubFetch(githubToken);
 
-	server.tool('list_repos', 'List repositories in the organization', {
+	server.tool('list_repos', 'List repositories in the organization, sorted by most recently updated. Paginated — use page and per_page to navigate results.', {
 		page: z.number().optional().describe('Page number (default 1)'),
 		per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
 	}, toolDefs.list_repos(gh, githubOrg));
