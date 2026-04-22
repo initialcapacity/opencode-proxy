@@ -15,22 +15,19 @@ export interface AccessJWTPayload {
 	sub: string;
 }
 
-type KeyFetcher = (teamDomain: string) => Promise<JWK[]>;
+export type KeyFetcher = (teamDomain: string) => Promise<JWK[]>;
 
 const KEY_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 export class JwtVerifier {
-	private teamDomain: string;
-	private aud: string;
-	private fetchKeys: KeyFetcher;
 	private cachedKeys: JWK[] | undefined;
 	private cachedAt = 0;
 
-	constructor(teamDomain: string, aud: string, fetchKeys?: KeyFetcher) {
-		this.teamDomain = teamDomain;
-		this.aud = aud;
-		this.fetchKeys = fetchKeys ?? JwtVerifier.fetchAccessPublicKeys;
-	}
+	constructor(
+		private readonly teamDomain: string,
+		private readonly aud: string,
+		private readonly fetchKeys: KeyFetcher = JwtVerifier.fetchAccessPublicKeys,
+	) {}
 
 	async verify(token: string): Promise<AccessJWTPayload> {
 		const parts = token.split('.');

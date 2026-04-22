@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from 'hono';
-import { JwtVerifier } from '../jwt';
+import { JwtVerifier } from './jwt';
 
 type AuthEnv = {
 	Bindings: {
@@ -11,24 +11,18 @@ type AuthEnv = {
 	};
 };
 
-export function createAuthMiddleware(
-	verifierFactory?: (teamDomain: string, aud: string) => JwtVerifier,
-): MiddlewareHandler<AuthEnv> {
-	let verifier: JwtVerifier | undefined;
-
+export function createAuthMiddleware(verifier?: JwtVerifier): MiddlewareHandler<AuthEnv> {
 	return async (c, next) => {
 		// Anthropic SDK sends x-api-key, OpenAI SDK sends Authorization: Bearer
-		const authHeader = c.req.header('Authorization');
 		const apiKeyHeader = c.req.header('x-api-key');
-
+		const authHeader = c.req.header('Authorization');
 		const token = apiKeyHeader ?? (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined);
+
 		if (!token) {
 			return c.json({ error: 'Missing authorization' }, 401);
 		}
 
-		verifier ??= verifierFactory
-			? verifierFactory(c.env.CF_ACCESS_TEAM_DOMAIN, c.env.CF_ACCESS_AUD)
-			: new JwtVerifier(c.env.CF_ACCESS_TEAM_DOMAIN, c.env.CF_ACCESS_AUD);
+		verifier ??= new JwtVerifier(c.env.CF_ACCESS_TEAM_DOMAIN, c.env.CF_ACCESS_AUD);
 
 		try {
 			const payload = await verifier.verify(token);

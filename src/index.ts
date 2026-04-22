@@ -1,8 +1,7 @@
 import { Hono } from 'hono';
-import { PROVIDERS } from './providers';
-import { buildDiscoveryPayload } from './discovery';
-import { createAuthMiddleware } from './middleware/auth';
-import { createLoggingMiddleware } from './middleware/logging';
+import { PROVIDERS, buildDiscoveryPayload } from './discovery';
+import { createAuthMiddleware } from './auth';
+import { createLoggingMiddleware } from './logging';
 import { GatewayProxy } from './gateway';
 
 type Bindings = {

@@ -1,4 +1,4 @@
-import { PROVIDERS } from './providers';
+export const PROVIDERS = ['anthropic', 'openai'] as const;
 
 export function buildDiscoveryPayload(origin: string) {
 	return {
@@ -8,9 +8,16 @@ export function buildDiscoveryPayload(origin: string) {
 		},
 		config: {
 			enabled_providers: [...PROVIDERS],
-			provider: Object.fromEntries(
-				PROVIDERS.map((p) => [p, { env: ['CF_ACCESS_TOKEN'], options: { baseURL: `${origin}/v1/${p}` } }]),
-			),
+			provider: {
+				anthropic: {
+					env: ['CF_ACCESS_TOKEN'],
+					options: { baseURL: `${origin}/v1/anthropic` },
+				},
+				openai: {
+					env: ['CF_ACCESS_TOKEN'],
+					options: { baseURL: `${origin}/v1/openai` },
+				},
+			},
 		},
 	};
 }

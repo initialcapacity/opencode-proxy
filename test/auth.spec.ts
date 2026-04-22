@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { createAuthMiddleware } from '../../src/middleware/auth';
-import { JwtVerifier } from '../../src/jwt';
-import { generateKeyPair, signJWT } from '../helpers/jwt';
+import { createAuthMiddleware } from '../src/auth';
+import { JwtVerifier } from '../src/jwt';
+import { generateKeyPair, signJWT } from './helpers/jwt';
 
 const TEAM_DOMAIN = 'test.cloudflareaccess.com';
 const AUD = 'test-audience-tag';
@@ -15,10 +15,10 @@ type TestEnv = {
 async function createTestApp() {
 	const { publicJWK, privateKey } = await generateKeyPair();
 	const fetchKeys = async () => [publicJWK as any];
-	const verifierFactory = (teamDomain: string, aud: string) => new JwtVerifier(teamDomain, aud, fetchKeys);
+	const verifier = new JwtVerifier(TEAM_DOMAIN, AUD, fetchKeys);
 
 	const app = new Hono<TestEnv>();
-	app.use('/*', createAuthMiddleware(verifierFactory));
+	app.use('/*', createAuthMiddleware(verifier));
 	app.get('/test', (c) => c.json({ email: c.get('userEmail') }));
 
 	const env = { CF_ACCESS_TEAM_DOMAIN: TEAM_DOMAIN, CF_ACCESS_AUD: AUD };

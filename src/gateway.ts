@@ -1,13 +1,9 @@
 export class GatewayProxy {
-	private accountId: string;
-	private gatewayName: string;
-	private aigToken: string;
-
-	constructor(accountId: string, gatewayName: string, aigToken: string) {
-		this.accountId = accountId;
-		this.gatewayName = gatewayName;
-		this.aigToken = aigToken;
-	}
+	constructor(
+		private readonly accountId: string,
+		private readonly gatewayName: string,
+		private readonly aigToken: string,
+	) {}
 
 	async proxy(request: Request, provider: string, userEmail: string): Promise<Response> {
 		const url = new URL(request.url);
