@@ -1,0 +1,45 @@
+export class GatewayProxy {
+	private accountId: string;
+	private gatewayName: string;
+	private aigToken: string;
+
+	constructor(accountId: string, gatewayName: string, aigToken: string) {
+		this.accountId = accountId;
+		this.gatewayName = gatewayName;
+		this.aigToken = aigToken;
+	}
+
+	async proxy(request: Request, provider: string, userEmail: string): Promise<Response> {
+		const url = new URL(request.url);
+		const prefix = `/v1/${provider}`;
+		const downstreamPath = url.pathname.slice(prefix.length) + url.search;
+		const target = this.buildTargetUrl(provider, downstreamPath);
+
+		const headers = this.buildHeaders(new Headers(request.headers), userEmail);
+
+		const resp = await fetch(target, {
+			method: request.method,
+			headers,
+			body: request.body,
+		});
+
+		return new Response(resp.body, {
+			status: resp.status,
+			headers: resp.headers,
+		});
+	}
+
+	buildTargetUrl(provider: string, downstreamPath: string): string {
+		return `https://gateway.ai.cloudflare.com/v1/${this.accountId}/${this.gatewayName}/${provider}${downstreamPath}`;
+	}
+
+	buildHeaders(original: Headers, userEmail: string): Headers {
+		const headers = new Headers(original);
+		headers.delete('authorization');
+		headers.delete('x-api-key');
+		headers.delete('host');
+		headers.set('cf-aig-authorization', `Bearer ${this.aigToken}`);
+		headers.set('cf-aig-metadata', JSON.stringify({ userId: userEmail }));
+		return headers;
+	}
+}

@@ -1,0 +1,84 @@
+import { describe, it, expect } from 'vitest';
+import { Hono } from 'hono';
+import { createAuthMiddleware } from '../../src/middleware/auth';
+import { JwtVerifier } from '../../src/jwt';
+import { generateKeyPair, signJWT } from '../helpers/jwt';
+
+const TEAM_DOMAIN = 'test.cloudflareaccess.com';
+const AUD = 'test-audience-tag';
+
+type TestEnv = {
+	Bindings: { CF_ACCESS_TEAM_DOMAIN: string; CF_ACCESS_AUD: string };
+	Variables: { userEmail: string };
+};
+
+async function createTestApp() {
+	const { publicJWK, privateKey } = await generateKeyPair();
+	const fetchKeys = async () => [publicJWK as any];
+	const verifierFactory = (teamDomain: string, aud: string) => new JwtVerifier(teamDomain, aud, fetchKeys);
+
+	const app = new Hono<TestEnv>();
+	app.use('/*', createAuthMiddleware(verifierFactory));
+	app.get('/test', (c) => c.json({ email: c.get('userEmail') }));
+
+	const env = { CF_ACCESS_TEAM_DOMAIN: TEAM_DOMAIN, CF_ACCESS_AUD: AUD };
+
+	return { app, env, privateKey, kid: publicJWK.kid };
+}
+
+async function validToken(privateKey: CryptoKey, kid: string) {
+	return signJWT(
+		{
+			aud: [AUD],
+			email: 'user@example.com',
+			iss: `https://${TEAM_DOMAIN}`,
+			exp: Math.floor(Date.now() / 1000) + 3600,
+			iat: Math.floor(Date.now() / 1000),
+			sub: 'user-id',
+		},
+		privateKey,
+		kid,
+	);
+}
+
+describe('auth middleware', () => {
+	it('returns 401 when no token is provided', async () => {
+		const { app, env } = await createTestApp();
+
+		const res = await app.fetch(new Request('http://localhost/test'), env);
+
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual({ error: 'Missing authorization' });
+	});
+
+	it('returns 401 for an invalid token', async () => {
+		const { app, env } = await createTestApp();
+
+		const res = await app.fetch(new Request('http://localhost/test', { headers: { 'x-api-key': 'bad' } }), env);
+
+		expect(res.status).toBe(401);
+	});
+
+	it('passes with a valid x-api-key token', async () => {
+		const { app, env, privateKey, kid } = await createTestApp();
+		const token = await validToken(privateKey, kid);
+
+		const res = await app.fetch(new Request('http://localhost/test', { headers: { 'x-api-key': token } }), env);
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ email: 'user@example.com' });
+	});
+
+	it('passes with a valid Authorization Bearer token', async () => {
+		const { app, env, privateKey, kid } = await createTestApp();
+		const token = await validToken(privateKey, kid);
+
+		const res = await app.fetch(
+			new Request('http://localhost/test', { headers: { Authorization: `Bearer ${token}` } }),
+			env,
+		);
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ email: 'user@example.com' });
+	});
+});
