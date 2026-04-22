@@ -3,6 +3,7 @@ import { PROVIDERS, buildDiscoveryPayload } from './discovery';
 import { createAuthMiddleware } from './auth';
 import { createLoggingMiddleware } from './logging';
 import { GatewayProxy } from './gateway';
+import { landingPage } from './landing';
 
 type Bindings = {
 	CF_ACCESS_TEAM_DOMAIN: string;
@@ -32,6 +33,8 @@ for (const provider of PROVIDERS) {
 		return proxy.proxy(c.req.raw, provider, c.get('userEmail'));
 	});
 }
+
+app.get('/', (c) => c.html(landingPage(new URL(c.req.url).origin)));
 
 app.all('*', (c) => c.json({ error: 'Not found' }, 404));
 

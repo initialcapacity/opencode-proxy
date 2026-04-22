@@ -37,6 +37,17 @@ describe('integration', () => {
 		expect(response.status).toBe(401);
 	});
 
+	it('returns landing page at root', async () => {
+		const response = await SELF.fetch('https://opencode.icap.dev/');
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('content-type')).toContain('text/html');
+		const body = await response.text();
+		expect(body).toContain('brew install opencode');
+		expect(body).toContain('opencode auth login');
+		expect(body).toContain('opencode.icap.dev');
+	});
+
 	it('returns 404 for unknown paths', async () => {
 		const response = await SELF.fetch('https://opencode.icap.dev/unknown');
 
