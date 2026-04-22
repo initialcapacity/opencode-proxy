@@ -133,6 +133,28 @@ describe('GatewayProxy', () => {
 			);
 		});
 
+		it('propagates network errors from the gateway', async () => {
+			const fetchFn: FetchFn = async () => {
+				throw new TypeError('network down');
+			};
+			const proxy = new GatewayProxy(ACCOUNT_ID, GATEWAY_NAME, AIG_TOKEN, fetchFn);
+			const request = new Request('https://proxy.example/v1/anthropic/v1/messages', { method: 'POST' });
+
+			await expect(proxy.proxy(request, 'anthropic', 'user@example.com')).rejects.toThrow('network down');
+		});
+
+		it('normalizes an empty downstream path to a single slash', async () => {
+			const { fetchFn, captured } = captureFetch(new Response('ok'));
+			const proxy = new GatewayProxy(ACCOUNT_ID, GATEWAY_NAME, AIG_TOKEN, fetchFn);
+			const request = new Request('https://proxy.example/v1/anthropic', { method: 'GET' });
+
+			await proxy.proxy(request, 'anthropic', 'user@example.com');
+
+			expect(captured[0].url).toBe(
+				`https://gateway.ai.cloudflare.com/v1/${ACCOUNT_ID}/${GATEWAY_NAME}/anthropic/`,
+			);
+		});
+
 		it('returns the gateway status and body unchanged', async () => {
 			const { fetchFn } = captureFetch(
 				new Response('{"error":"upstream"}', {

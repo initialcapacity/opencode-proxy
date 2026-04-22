@@ -1,5 +1,11 @@
 export const PROVIDERS = ['anthropic', 'openai'] as const;
 
+export type Provider = (typeof PROVIDERS)[number];
+
+export function isProvider(value: string): value is Provider {
+	return (PROVIDERS as readonly string[]).includes(value);
+}
+
 export function buildDiscoveryPayload(origin: string) {
 	return {
 		auth: {

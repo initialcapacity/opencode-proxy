@@ -167,4 +167,67 @@ describe('JwtVerifier', () => {
 
 		await expect(verifier.verify(tampered)).rejects.toThrow('Invalid signature');
 	});
+
+	it('rejects a token whose header alg is not RS256', async () => {
+		const { verifier, privateKey, kid } = await createVerifier();
+		const token = await signJWT(await validPayload(), privateKey, kid, { alg: 'HS256' });
+
+		await expect(verifier.verify(token)).rejects.toThrow('Unsupported JWT algorithm');
+	});
+
+	it('rejects a token whose header is missing a kid', async () => {
+		const { verifier, privateKey, kid } = await createVerifier();
+		const token = await signJWT(await validPayload(), privateKey, kid, { kid: undefined });
+
+		await expect(verifier.verify(token)).rejects.toThrow('Invalid JWT kid');
+	});
+
+	it('accepts a token whose aud is a string matching the expected audience', async () => {
+		const { verifier, privateKey, kid } = await createVerifier();
+		const token = await signJWT(await validPayload({ aud: AUD }), privateKey, kid);
+
+		const payload = await verifier.verify(token);
+
+		expect(payload.email).toBe('user@example.com');
+	});
+
+	it('rejects a token whose aud is a string not matching the expected audience', async () => {
+		const { verifier, privateKey, kid } = await createVerifier();
+		const token = await signJWT(await validPayload({ aud: 'some-other-aud' }), privateKey, kid);
+
+		await expect(verifier.verify(token)).rejects.toThrow('Invalid audience');
+	});
+
+	it('rejects a token whose nbf claim is in the future', async () => {
+		const { verifier, privateKey, kid } = await createVerifier();
+		const future = Math.floor(Date.now() / 1000) + 3600;
+		const token = await signJWT(await validPayload({ nbf: future }), privateKey, kid);
+
+		await expect(verifier.verify(token)).rejects.toThrow('Token not yet valid');
+	});
+
+	it('uses the injected clock to determine expiry', async () => {
+		const { publicJWK, privateKey } = await generateKeyPair();
+		const fetchKeys = async () => [publicJWK as any];
+		// Token expires at t=5000. Clock at 4000 → valid; clock at 6000 → expired.
+		let clock = 4_000_000;
+		const verifier = new JwtVerifier(TEAM_DOMAIN, AUD, fetchKeys, () => clock);
+		const token = await signJWT(
+			{
+				aud: [AUD],
+				email: 'user@example.com',
+				iss: `https://${TEAM_DOMAIN}`,
+				exp: 5000,
+				iat: 1000,
+				sub: 'user-id',
+			},
+			privateKey,
+			publicJWK.kid,
+		);
+
+		await expect(verifier.verify(token)).resolves.toBeDefined();
+
+		clock = 6_000_000;
+		await expect(verifier.verify(token)).rejects.toThrow('Token expired');
+	});
 });

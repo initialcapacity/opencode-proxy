@@ -14,7 +14,7 @@ describe('integration', () => {
 		const response = await SELF.fetch('https://opencode.icap.dev/.well-known/opencode');
 		expect(response.status).toBe(200);
 
-		const body = await response.json();
+		const body = (await response.json()) as any;
 		expect(body.auth.command).toEqual([
 			'cloudflared',
 			'access',
@@ -60,6 +60,15 @@ describe('integration', () => {
 		const response = await SELF.fetch('https://opencode.icap.dev/unknown');
 
 		expect(response.status).toBe(404);
+	});
+
+	it('returns 404 for unknown providers without requiring authentication', async () => {
+		const response = await SELF.fetch('https://opencode.icap.dev/v1/groq/v1/messages', {
+			method: 'POST',
+		});
+
+		expect(response.status).toBe(404);
+		expect(await response.json()).toEqual({ error: 'Unknown provider' });
 	});
 
 	it('proxies an authenticated request through the AI gateway', async () => {

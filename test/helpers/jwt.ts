@@ -8,11 +8,11 @@ let cached: JWKPair | undefined;
 export async function generateKeyPair(): Promise<JWKPair> {
 	if (cached) return cached;
 
-	const keyPair = await crypto.subtle.generateKey(
+	const keyPair = (await crypto.subtle.generateKey(
 		{ name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
 		true,
 		['sign', 'verify'],
-	);
+	)) as CryptoKeyPair;
 
 	const publicJWK = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
 	cached = {
@@ -31,8 +31,9 @@ export async function signJWT(
 	payload: Record<string, unknown>,
 	privateKey: CryptoKey,
 	kid: string,
+	headerOverrides?: Record<string, unknown>,
 ): Promise<string> {
-	const header = { alg: 'RS256', typ: 'JWT', kid };
+	const header = { alg: 'RS256', typ: 'JWT', kid, ...headerOverrides };
 	const enc = new TextEncoder();
 
 	const headerB64 = base64UrlEncode(enc.encode(JSON.stringify(header)));

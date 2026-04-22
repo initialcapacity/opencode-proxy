@@ -1,6 +1,9 @@
 import type { MiddlewareHandler } from 'hono';
+import type { AuthVariables } from './auth';
 
-export function createLoggingMiddleware(): MiddlewareHandler<{ Variables: { userEmail: string } }> {
+export function createLoggingMiddleware<
+	E extends { Variables: AuthVariables } = { Variables: AuthVariables },
+>(): MiddlewareHandler<E> {
 	return async (c, next) => {
 		const start = Date.now();
 		await next();

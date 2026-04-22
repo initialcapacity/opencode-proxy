@@ -11,7 +11,9 @@ export class GatewayProxy {
 	async proxy(request: Request, provider: string, userEmail: string): Promise<Response> {
 		const url = new URL(request.url);
 		const prefix = `/v1/${provider}`;
-		const downstreamPath = url.pathname.slice(prefix.length) + url.search;
+		// Normalize so `/v1/anthropic` and `/v1/anthropic/` both produce a `/` root path downstream.
+		const rest = url.pathname.slice(prefix.length) || '/';
+		const downstreamPath = rest + url.search;
 		const target = this.buildTargetUrl(provider, downstreamPath);
 
 		const headers = this.buildHeaders(new Headers(request.headers), userEmail);

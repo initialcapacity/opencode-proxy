@@ -2,7 +2,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "opencode-proxy",
 	"main": "src/index.ts",
-	"compatibility_date": "2026-04-21",
+	"compatibility_date": "2026-03-10",
 	"observability": {
 		"enabled": true
 	},

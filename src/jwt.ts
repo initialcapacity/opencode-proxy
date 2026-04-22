@@ -1,17 +1,18 @@
 interface JWK {
 	kid: string;
 	kty: string;
+	alg?: string;
 	n: string;
 	e: string;
-	alg: string;
 }
 
 export interface AccessJWTPayload {
 	email: string;
-	aud: string[];
+	aud: string[] | string;
 	iss: string;
 	exp: number;
 	iat: number;
+	nbf?: number;
 	sub: string;
 }
 
@@ -34,18 +35,36 @@ export class JwtVerifier {
 		const parts = token.split('.');
 		if (parts.length !== 3) throw new Error('Invalid JWT format');
 
-		const header = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[0]))) as { kid: string };
+		const header = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[0]))) as {
+			alg?: unknown;
+			kid?: unknown;
+			typ?: unknown;
+		};
 		const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[1]))) as AccessJWTPayload;
 
-		if (!payload.aud.includes(this.aud)) throw new Error('Invalid audience');
+		// Reject tokens that claim an algorithm other than RS256. Cloudflare Access only ever issues
+		// RS256 tokens; accepting anything else invites algorithm-confusion attacks.
+		if (header.alg !== 'RS256') throw new Error('Unsupported JWT algorithm');
+		if (typeof header.kid !== 'string' || header.kid === '') throw new Error('Invalid JWT kid');
+
+		const auds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+		if (!auds.includes(this.aud)) throw new Error('Invalid audience');
 		if (payload.iss !== `https://${this.teamDomain}`) throw new Error('Invalid issuer');
-		if (payload.exp < Math.floor(Date.now() / 1000)) {
+
+		const nowSeconds = Math.floor(this.now() / 1000);
+		if (typeof payload.exp !== 'number' || payload.exp < nowSeconds) {
 			throw new Error('Token expired — re-run: opencode auth login');
+		}
+		if (typeof payload.nbf === 'number' && payload.nbf > nowSeconds) {
+			throw new Error('Token not yet valid');
 		}
 
 		const keys = await this.getKeys();
 		const jwk = keys.find((k) => k.kid === header.kid);
 		if (!jwk) throw new Error('No matching key found');
+		if (jwk.kty !== 'RSA' || (jwk.alg !== undefined && jwk.alg !== 'RS256')) {
+			throw new Error('Unsupported JWK type');
+		}
 
 		const key = await crypto.subtle.importKey(
 			'jwk',
