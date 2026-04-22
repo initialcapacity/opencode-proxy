@@ -1,8 +1,16 @@
-import { SELF } from 'cloudflare:test';
-import { describe, it, expect } from 'vitest';
+import { SELF, env, fetchMock } from 'cloudflare:test';
+import { afterEach, beforeAll, describe, it, expect } from 'vitest';
+import { generateKeyPair, signJWT } from './helpers/jwt';
 
 describe('integration', () => {
-	it('returns discovery config from well-known endpoint', async () => {
+	beforeAll(() => {
+		fetchMock.activate();
+		fetchMock.disableNetConnect();
+	});
+
+	afterEach(() => fetchMock.assertNoPendingInterceptors());
+
+	it('returns discovery config without authentication', async () => {
 		const response = await SELF.fetch('https://opencode.icap.dev/.well-known/opencode');
 		expect(response.status).toBe(200);
 
@@ -52,5 +60,48 @@ describe('integration', () => {
 		const response = await SELF.fetch('https://opencode.icap.dev/unknown');
 
 		expect(response.status).toBe(404);
+	});
+
+	it('proxies an authenticated request through the AI gateway', async () => {
+		const { publicJWK, privateKey } = await generateKeyPair();
+		const token = await signJWT(
+			{
+				aud: [env.CF_ACCESS_AUD],
+				email: 'user@example.com',
+				iss: `https://${env.CF_ACCESS_TEAM_DOMAIN}`,
+				exp: Math.floor(Date.now() / 1000) + 3600,
+				iat: Math.floor(Date.now() / 1000),
+				sub: 'user-id',
+			},
+			privateKey,
+			publicJWK.kid,
+		);
+
+		fetchMock
+			.get(`https://${env.CF_ACCESS_TEAM_DOMAIN}`)
+			.intercept({ path: '/cdn-cgi/access/certs' })
+			.reply(200, { keys: [publicJWK] });
+
+		fetchMock
+			.get('https://gateway.ai.cloudflare.com')
+			.intercept({
+				path: `/v1/${env.CF_ACCOUNT_ID}/${env.CF_GATEWAY_NAME}/anthropic/v1/messages`,
+				method: 'POST',
+				body: '{"model":"claude"}',
+				headers: {
+					'cf-aig-authorization': `Bearer ${env.CF_AIG_TOKEN}`,
+					'cf-aig-metadata': '{"userId":"user@example.com"}',
+				},
+			})
+			.reply(200, { content: 'hello' }, { headers: { 'content-type': 'application/json' } });
+
+		const response = await SELF.fetch('https://opencode.icap.dev/v1/anthropic/v1/messages', {
+			method: 'POST',
+			headers: { 'x-api-key': token, 'content-type': 'application/json' },
+			body: '{"model":"claude"}',
+		});
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ content: 'hello' });
 	});
 });

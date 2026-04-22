@@ -81,4 +81,28 @@ describe('auth middleware', () => {
 		expect(res.status).toBe(200);
 		expect(await res.json()).toEqual({ email: 'user@example.com' });
 	});
+
+	it('returns 401 for an empty Bearer token', async () => {
+		const { app, env } = await createTestApp();
+
+		const res = await app.fetch(
+			new Request('http://localhost/test', { headers: { Authorization: 'Bearer ' } }),
+			env,
+		);
+
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual({ error: 'Missing authorization' });
+	});
+
+	it('treats header names case-insensitively', async () => {
+		const { app, env, privateKey, kid } = await createTestApp();
+		const token = await validToken(privateKey, kid);
+
+		const res = await app.fetch(
+			new Request('http://localhost/test', { headers: { 'X-API-KEY': token } }),
+			env,
+		);
+
+		expect(res.status).toBe(200);
+	});
 });

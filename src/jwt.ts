@@ -20,13 +20,14 @@ export type KeyFetcher = (teamDomain: string) => Promise<JWK[]>;
 const KEY_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 export class JwtVerifier {
-	private cachedKeys: JWK[] | undefined;
+	private cachedKeysPromise: Promise<JWK[]> | undefined;
 	private cachedAt = 0;
 
 	constructor(
 		private readonly teamDomain: string,
 		private readonly aud: string,
 		private readonly fetchKeys: KeyFetcher = JwtVerifier.fetchAccessPublicKeys,
+		private readonly now: () => number = Date.now,
 	) {}
 
 	async verify(token: string): Promise<AccessJWTPayload> {
@@ -63,12 +64,17 @@ export class JwtVerifier {
 	}
 
 	private async getKeys(): Promise<JWK[]> {
-		if (this.cachedKeys && Date.now() - this.cachedAt < KEY_CACHE_TTL_MS) {
-			return this.cachedKeys;
+		if (this.cachedKeysPromise && this.now() - this.cachedAt < KEY_CACHE_TTL_MS) {
+			return this.cachedKeysPromise;
 		}
-		this.cachedKeys = await this.fetchKeys(this.teamDomain);
-		this.cachedAt = Date.now();
-		return this.cachedKeys;
+		this.cachedAt = this.now();
+		this.cachedKeysPromise = this.fetchKeys(this.teamDomain);
+		try {
+			return await this.cachedKeysPromise;
+		} catch (e) {
+			this.cachedKeysPromise = undefined;
+			throw e;
+		}
 	}
 
 	private static async fetchAccessPublicKeys(teamDomain: string): Promise<JWK[]> {
@@ -80,7 +86,7 @@ export class JwtVerifier {
 }
 
 function base64UrlDecode(str: string): Uint8Array {
-	const padded = str.replace(/-/g, '+').replace(/_/g, '/');
+	const padded = str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4);
 	const binary = atob(padded);
 	const bytes = new Uint8Array(binary.length);
 	for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);

@@ -1,8 +1,11 @@
+export type FetchFn = typeof fetch;
+
 export class GatewayProxy {
 	constructor(
 		private readonly accountId: string,
 		private readonly gatewayName: string,
 		private readonly aigToken: string,
+		private readonly fetchFn: FetchFn = globalThis.fetch.bind(globalThis),
 	) {}
 
 	async proxy(request: Request, provider: string, userEmail: string): Promise<Response> {
@@ -13,7 +16,7 @@ export class GatewayProxy {
 
 		const headers = this.buildHeaders(new Headers(request.headers), userEmail);
 
-		const resp = await fetch(target, {
+		const resp = await this.fetchFn(target, {
 			method: request.method,
 			headers,
 			body: request.body,
@@ -34,6 +37,8 @@ export class GatewayProxy {
 		headers.delete('authorization');
 		headers.delete('x-api-key');
 		headers.delete('host');
+		headers.delete('content-length');
+		headers.delete('transfer-encoding');
 		headers.set('cf-aig-authorization', `Bearer ${this.aigToken}`);
 		headers.set('cf-aig-metadata', JSON.stringify({ userId: userEmail }));
 		return headers;
