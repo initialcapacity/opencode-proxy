@@ -1,0 +1,24 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "github-mcp",
+	"main": "github-mcp/index.ts",
+	"compatibility_date": "2026-03-10",
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"workers_dev": false,
+	"routes": [
+		{
+			"pattern": "github-mcp.icap.dev",
+			"custom_domain": true
+		}
+	],
+	"vars": {
+		"CF_ACCESS_TEAM_DOMAIN": "initialcapacity.cloudflareaccess.com",
+		"GITHUB_ORG": "initialcapacity"
+	}
+}

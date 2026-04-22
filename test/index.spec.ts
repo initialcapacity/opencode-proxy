@@ -36,6 +36,9 @@ describe('integration', () => {
 		expect(body.config.provider['ic-workers-ai'].options.baseURL).toBe(
 			'https://opencode.icap.dev/v1/compat',
 		);
+		expect(body.config.mcp.github.type).toBe('remote');
+		expect(body.config.mcp.github.url).toBe('https://github-mcp.icap.dev/mcp');
+		expect(body.config.mcp.github.enabled).toBe(true);
 	});
 
 	it('includes models from KV in discovery config', async () => {

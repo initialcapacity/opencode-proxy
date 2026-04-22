@@ -33,3 +33,6 @@ jobs:
       - run: npm run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_TOKEN }}
+      - run: npm run deploy:github-mcp
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_TOKEN }}

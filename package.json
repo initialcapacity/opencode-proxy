@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
+    "deploy:github-mcp": "wrangler deploy -c wrangler.github-mcp.jsonc",
     "dev": "wrangler dev",
+    "dev:github-mcp": "wrangler dev -c wrangler.github-mcp.jsonc",
     "start": "wrangler dev",
     "test": "vitest",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p test",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test && tsc --noEmit -p github-mcp",
     "cf-typegen": "wrangler types"
   },
   "devDependencies": {
@@ -18,6 +20,9 @@
     "wrangler": "^4.84.1"
   },
   "dependencies": {
-    "hono": "^4.12.14"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "agents": "^0.11.4",
+    "hono": "^4.12.14",
+    "zod": "^4.3.6"
   }
 }

@@ -22,6 +22,8 @@ export const OPENCODE_PROVIDERS = Object.keys(PROVIDER_CONFIG);
 
 type Models = Record<string, Record<string, unknown>>;
 
+export const GITHUB_MCP_HOST = 'github-mcp.icap.dev';
+
 export function buildDiscoveryPayload(origin: string, modelsByGateway: Record<string, Models> = {}) {
 	const provider: Record<string, unknown> = {};
 
@@ -44,6 +46,16 @@ export function buildDiscoveryPayload(origin: string, modelsByGateway: Record<st
 		config: {
 			enabled_providers: [...OPENCODE_PROVIDERS],
 			provider,
+			mcp: {
+				github: {
+					type: 'remote',
+					url: `https://${GITHUB_MCP_HOST}/mcp`,
+					headers: {
+						'x-api-key': '{env:CF_ACCESS_TOKEN}',
+					},
+					enabled: true,
+				},
+			},
 		},
 	};
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDiscoveryPayload } from '../src/discovery';
+import { buildDiscoveryPayload, GITHUB_MCP_HOST } from '../src/discovery';
 
 describe('buildDiscoveryPayload', () => {
 	const origin = 'https://opencode.icap.dev';
@@ -58,5 +58,17 @@ describe('buildDiscoveryPayload', () => {
 		const openai = payload.config.provider['ic-openai'] as Record<string, unknown>;
 		expect(anthropic.models).toEqual(models.anthropic);
 		expect(openai.models).toEqual(models.openai);
+	});
+
+	it('includes github mcp server config', () => {
+		const payload = buildDiscoveryPayload(origin);
+		expect(payload.config.mcp).toEqual({
+			github: {
+				type: 'remote',
+				url: `https://${GITHUB_MCP_HOST}/mcp`,
+				headers: { 'x-api-key': '{env:CF_ACCESS_TOKEN}' },
+				enabled: true,
+			},
+		});
 	});
 });
