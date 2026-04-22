@@ -58,6 +58,17 @@ app.all('/v1/:provider/*', (c) => {
 	return proxy.proxy(c.req.raw, c.req.param('provider') as GatewayProvider, c.get('userEmail'));
 });
 
+app.post('/admin/refresh-models', (c, next) => {
+	if (!authMiddleware) {
+		authMiddleware = createAuthMiddleware<App>(new JwtVerifier(c.env.CF_ACCESS_TEAM_DOMAIN, c.env.CF_ACCESS_AUD));
+	}
+	return authMiddleware(c, next);
+}, async (c) => {
+	const catalog = new ModelCatalog(c.env.MODELS);
+	await catalog.refresh();
+	return c.json({ ok: true });
+});
+
 app.get('/', (c) => c.html(landingPage(new URL(c.req.url).origin)));
 
 app.all('*', (c) => c.json({ error: 'Not found' }, 404));
