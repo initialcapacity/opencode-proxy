@@ -8,7 +8,7 @@ authenticated via Cloudflare Access SSO.
 1.  Install dependencies
 
     ```shell
-    brew install opencode cloudflare/cloudflare/cloudflared
+    brew install anomalyco/tap/opencode cloudflared
     ```
 
 1.  Authenticate

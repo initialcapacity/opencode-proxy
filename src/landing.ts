@@ -28,7 +28,7 @@ export function landingPage(origin: string) {
 	</style>
 </head>
 <body>
-	<pre>brew install opencode cloudflare/cloudflare/cloudflared
+	<pre>brew install anomalyco/tap/opencode cloudflared
 opencode auth login ${origin}
 opencode</pre>
 </body>

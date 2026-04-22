@@ -43,7 +43,7 @@ describe('integration', () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get('content-type')).toContain('text/html');
 		const body = await response.text();
-		expect(body).toContain('brew install opencode');
+		expect(body).toContain('brew install anomalyco/tap/opencode cloudflared');
 		expect(body).toContain('opencode auth login');
 		expect(body).toContain('opencode.icap.dev');
 	});
