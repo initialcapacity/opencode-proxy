@@ -6,6 +6,12 @@ type ModelsDevProvider = {
 	models: Record<string, Record<string, unknown>>;
 };
 
+const MODELS_DEV_KEYS: Record<GatewayProvider, string> = {
+	anthropic: 'anthropic',
+	openai: 'openai',
+	'workers-ai': 'cloudflare-workers-ai',
+};
+
 function sanitizeModels(
 	models: Record<string, Record<string, unknown>>,
 ): Record<string, Record<string, unknown>> {
@@ -36,7 +42,8 @@ export class ModelCatalog {
 
 		await Promise.all(
 			GATEWAY_PROVIDERS.map((provider) => {
-				const entry = catalog[provider];
+				const key = MODELS_DEV_KEYS[provider];
+				const entry = catalog[key];
 				if (!entry?.models) return Promise.resolve();
 				const sanitized = sanitizeModels(entry.models);
 				return this.kv.put(`models:${provider}`, JSON.stringify(sanitized));

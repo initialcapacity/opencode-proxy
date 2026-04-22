@@ -12,7 +12,7 @@ describe('buildDiscoveryPayload', () => {
 
 	it('restricts to custom-named providers', () => {
 		const payload = buildDiscoveryPayload(origin);
-		expect(payload.config.enabled_providers).toEqual(['ic-anthropic', 'ic-openai']);
+		expect(payload.config.enabled_providers).toEqual(['ic-anthropic', 'ic-openai', 'ic-workers-ai']);
 	});
 
 	it('configures ic-anthropic with npm package and proxy base URL', () => {
@@ -31,6 +31,15 @@ describe('buildDiscoveryPayload', () => {
 		expect(provider.name).toBe('IC OpenAI');
 		expect(provider.env).toEqual(['CF_ACCESS_TOKEN']);
 		expect((provider.options as Record<string, string>).baseURL).toBe(`${origin}/v1/openai`);
+	});
+
+	it('configures ic-workers-ai with openai-compatible npm package and proxy base URL', () => {
+		const payload = buildDiscoveryPayload(origin);
+		const provider = payload.config.provider['ic-workers-ai'] as Record<string, unknown>;
+		expect(provider.npm).toBe('@ai-sdk/openai-compatible');
+		expect(provider.name).toBe('IC Workers AI');
+		expect(provider.env).toEqual(['CF_ACCESS_TOKEN']);
+		expect((provider.options as Record<string, string>).baseURL).toBe(`${origin}/v1/workers-ai`);
 	});
 
 	it('omits models when none are provided', () => {

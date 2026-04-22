@@ -23,7 +23,7 @@ describe('integration', () => {
 			'https://opencode.icap.dev',
 		]);
 		expect(body.auth.env).toBe('CF_ACCESS_TOKEN');
-		expect(body.config.enabled_providers).toEqual(['ic-anthropic', 'ic-openai']);
+		expect(body.config.enabled_providers).toEqual(['ic-anthropic', 'ic-openai', 'ic-workers-ai']);
 		expect(body.config.provider['ic-anthropic'].npm).toBe('@ai-sdk/anthropic');
 		expect(body.config.provider['ic-anthropic'].options.baseURL).toBe(
 			'https://opencode.icap.dev/v1/anthropic',
@@ -31,6 +31,10 @@ describe('integration', () => {
 		expect(body.config.provider['ic-openai'].npm).toBe('@ai-sdk/openai');
 		expect(body.config.provider['ic-openai'].options.baseURL).toBe(
 			'https://opencode.icap.dev/v1/openai',
+		);
+		expect(body.config.provider['ic-workers-ai'].npm).toBe('@ai-sdk/openai-compatible');
+		expect(body.config.provider['ic-workers-ai'].options.baseURL).toBe(
+			'https://opencode.icap.dev/v1/workers-ai',
 		);
 	});
 

@@ -27,6 +27,17 @@ const modelsDevResponse = {
 			},
 		},
 	},
+	'cloudflare-workers-ai': {
+		id: 'cloudflare-workers-ai',
+		npm: '@ai-sdk/openai-compatible',
+		name: 'Cloudflare Workers AI',
+		models: {
+			'@cf/meta/llama-3.1-8b-instruct': {
+				id: '@cf/meta/llama-3.1-8b-instruct',
+				name: 'Llama 3.1 8B Instruct',
+			},
+		},
+	},
 	groq: {
 		id: 'groq',
 		npm: '@ai-sdk/groq',
@@ -43,6 +54,7 @@ describe('ModelCatalog', () => {
 	beforeEach(async () => {
 		await env.MODELS.delete('models:anthropic');
 		await env.MODELS.delete('models:openai');
+		await env.MODELS.delete('models:workers-ai');
 	});
 
 	describe('refresh', () => {
@@ -53,8 +65,10 @@ describe('ModelCatalog', () => {
 
 			const anthropicRaw = await env.MODELS.get('models:anthropic');
 			const openaiRaw = await env.MODELS.get('models:openai');
+			const workersAiRaw = await env.MODELS.get('models:workers-ai');
 			expect(JSON.parse(anthropicRaw!)).toEqual(modelsDevResponse.anthropic.models);
 			expect(JSON.parse(openaiRaw!)).toEqual(modelsDevResponse.openai.models);
+			expect(JSON.parse(workersAiRaw!)).toEqual(modelsDevResponse['cloudflare-workers-ai'].models);
 		});
 
 		it('does not store models for unsupported providers', async () => {
