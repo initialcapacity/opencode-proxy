@@ -23,8 +23,27 @@ describe('integration', () => {
 			'https://opencode.icap.dev',
 		]);
 		expect(body.auth.env).toBe('CF_ACCESS_TOKEN');
-		expect(body.config.provider.anthropic.options.baseURL).toBe('https://opencode.icap.dev/v1/anthropic');
-		expect(body.config.provider.openai.options.baseURL).toBe('https://opencode.icap.dev/v1/openai');
+		expect(body.config.enabled_providers).toEqual(['ic-anthropic', 'ic-openai']);
+		expect(body.config.provider['ic-anthropic'].npm).toBe('@ai-sdk/anthropic');
+		expect(body.config.provider['ic-anthropic'].options.baseURL).toBe(
+			'https://opencode.icap.dev/v1/anthropic',
+		);
+		expect(body.config.provider['ic-openai'].npm).toBe('@ai-sdk/openai');
+		expect(body.config.provider['ic-openai'].options.baseURL).toBe(
+			'https://opencode.icap.dev/v1/openai',
+		);
+	});
+
+	it('includes models from KV in discovery config', async () => {
+		const models = { 'claude-sonnet-4-5': { name: 'Claude Sonnet 4.5' } };
+		await env.MODELS.put('models:anthropic', JSON.stringify(models));
+
+		const response = await SELF.fetch('https://opencode.icap.dev/.well-known/opencode');
+		const body = (await response.json()) as any;
+
+		expect(body.config.provider['ic-anthropic'].models).toEqual(models);
+
+		await env.MODELS.delete('models:anthropic');
 	});
 
 	it('rejects proxy requests without authorization', async () => {

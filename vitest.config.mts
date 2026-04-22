@@ -11,6 +11,7 @@ export default defineWorkersConfig({
 						CF_ACCESS_AUD: "test-access-aud",
 						CF_AIG_TOKEN: "test-aig-token",
 					},
+					kvNamespaces: ["MODELS"],
 				},
 			},
 		},
