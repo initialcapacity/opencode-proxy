@@ -6,6 +6,20 @@ type ModelsDevProvider = {
 	models: Record<string, Record<string, unknown>>;
 };
 
+function sanitizeModels(
+	models: Record<string, Record<string, unknown>>,
+): Record<string, Record<string, unknown>> {
+	const result: Record<string, Record<string, unknown>> = {};
+	for (const [id, model] of Object.entries(models)) {
+		const sanitized = { ...model };
+		if (typeof sanitized.experimental !== 'boolean' && sanitized.experimental != null) {
+			sanitized.experimental = true;
+		}
+		result[id] = sanitized;
+	}
+	return result;
+}
+
 export class ModelCatalog {
 	constructor(
 		private readonly kv: KVNamespace,
@@ -24,7 +38,8 @@ export class ModelCatalog {
 			GATEWAY_PROVIDERS.map((provider) => {
 				const entry = catalog[provider];
 				if (!entry?.models) return Promise.resolve();
-				return this.kv.put(`models:${provider}`, JSON.stringify(entry.models));
+				const sanitized = sanitizeModels(entry.models);
+				return this.kv.put(`models:${provider}`, JSON.stringify(sanitized));
 			}),
 		);
 	}

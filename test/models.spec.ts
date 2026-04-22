@@ -72,6 +72,32 @@ describe('ModelCatalog', () => {
 			await expect(catalog.refresh()).rejects.toThrow('models.dev returned 500');
 		});
 
+		it('converts non-boolean experimental fields to true', async () => {
+			const response = {
+				anthropic: {
+					models: {
+						'claude-opus-4-6': {
+							id: 'claude-opus-4-6',
+							name: 'Claude Opus 4.6',
+							experimental: { modes: { fast: { cost: { input: 30 } } } },
+						},
+						'claude-sonnet-4-5': {
+							id: 'claude-sonnet-4-5',
+							name: 'Claude Sonnet 4.5',
+							experimental: false,
+						},
+					},
+				},
+			};
+			const catalog = new ModelCatalog(env.MODELS, fakeFetch(200, response));
+
+			await catalog.refresh();
+
+			const models = JSON.parse((await env.MODELS.get('models:anthropic'))!);
+			expect(models['claude-opus-4-6'].experimental).toBe(true);
+			expect(models['claude-sonnet-4-5'].experimental).toBe(false);
+		});
+
 		it('handles a provider missing from the response', async () => {
 			const partial = { anthropic: modelsDevResponse.anthropic };
 			const catalog = new ModelCatalog(env.MODELS, fakeFetch(200, partial));
