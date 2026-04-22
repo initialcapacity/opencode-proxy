@@ -3,5 +3,5 @@
 	"compilerOptions": {
 		"types": ["../worker-configuration.d.ts", "node"]
 	},
-	"include": ["*.ts", "../src/jwt.ts"]
+	"include": ["*.ts", "../src/jwt.ts", "../src/auth.ts"]
 }

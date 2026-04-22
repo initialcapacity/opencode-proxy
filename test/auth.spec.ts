@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { createAuthMiddleware } from '../src/auth';
+import { createAuthMiddleware, extractToken } from '../src/auth';
 import { JwtVerifier } from '../src/jwt';
 import { generateKeyPair, signJWT } from './helpers/jwt';
 
@@ -40,6 +40,40 @@ async function validToken(privateKey: CryptoKey, kid: string) {
 		kid,
 	);
 }
+
+describe('extractToken', () => {
+	it('extracts from x-api-key header', () => {
+		const req = new Request('http://localhost', { headers: { 'x-api-key': 'my-token' } });
+		expect(extractToken(req)).toBe('my-token');
+	});
+
+	it('extracts from Authorization Bearer header', () => {
+		const req = new Request('http://localhost', { headers: { authorization: 'Bearer my-token' } });
+		expect(extractToken(req)).toBe('my-token');
+	});
+
+	it('prefers x-api-key over Authorization', () => {
+		const req = new Request('http://localhost', {
+			headers: { 'x-api-key': 'key-token', authorization: 'Bearer bearer-token' },
+		});
+		expect(extractToken(req)).toBe('key-token');
+	});
+
+	it('returns undefined when no auth headers are present', () => {
+		const req = new Request('http://localhost');
+		expect(extractToken(req)).toBeUndefined();
+	});
+
+	it('returns undefined for non-Bearer authorization', () => {
+		const req = new Request('http://localhost', { headers: { authorization: 'Basic abc123' } });
+		expect(extractToken(req)).toBeUndefined();
+	});
+
+	it('handles case-insensitive Bearer prefix', () => {
+		const req = new Request('http://localhost', { headers: { authorization: 'bearer my-token' } });
+		expect(extractToken(req)).toBe('my-token');
+	});
+});
 
 describe('auth middleware', () => {
 	it('returns 401 when no token is provided', async () => {

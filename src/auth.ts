@@ -5,14 +5,22 @@ export type AuthVariables = {
 	userEmail: string;
 };
 
+// Anthropic SDK sends x-api-key, OpenAI SDK sends Authorization: Bearer
+export function extractToken(request: Request): string | undefined {
+	const apiKey = request.headers.get('x-api-key');
+	if (apiKey) return apiKey;
+
+	const auth = request.headers.get('authorization');
+	if (auth?.toLowerCase().startsWith('bearer ')) return auth.slice(7);
+
+	return undefined;
+}
+
 export function createAuthMiddleware<E extends { Variables: AuthVariables } = { Variables: AuthVariables }>(
 	verifier: JwtVerifier,
 ): MiddlewareHandler<E> {
 	return async (c, next) => {
-		// Anthropic SDK sends x-api-key, OpenAI SDK sends Authorization: Bearer
-		const apiKeyHeader = c.req.header('x-api-key');
-		const authHeader = c.req.header('Authorization');
-		const token = apiKeyHeader ?? (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined);
+		const token = extractToken(c.req.raw);
 
 		if (!token) {
 			return c.json({ error: 'Missing authorization' }, 401);

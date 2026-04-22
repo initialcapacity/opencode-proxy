@@ -1,13 +1,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-const GITHUB_API = 'https://api.github.com';
+export type GitHubFetch = (path: string, init?: RequestInit) => Promise<Response>;
 
-type GitHubFetch = (path: string, init?: RequestInit) => Promise<Response>;
-
-function createGitHubFetch(token: string): GitHubFetch {
+export function createGitHubFetch(token: string): GitHubFetch {
 	return (path, init) =>
-		fetch(`${GITHUB_API}${path}`, {
+		fetch(`https://api.github.com${path}`, {
 			...init,
 			headers: {
 				accept: 'application/vnd.github.v3+json',
@@ -30,125 +28,79 @@ async function jsonResult(response: Response) {
 	return textResult(JSON.stringify(await response.json(), null, 2));
 }
 
-export function createServer(githubToken: string, githubOrg: string): McpServer {
-	const server = new McpServer({ name: 'IC GitHub', version: '1.0.0' });
-	const gh = createGitHubFetch(githubToken);
-
-	server.tool(
-		'list_repos',
-		'List repositories in the organization',
-		{
-			page: z.number().optional().describe('Page number (default 1)'),
-			per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
-		},
-		async ({ page, per_page }) => {
+export const toolDefs = {
+	list_repos: (gh: GitHubFetch, org: string) =>
+		async ({ page, per_page }: { page?: number; per_page?: number }) => {
 			const params = new URLSearchParams();
-			if (page) params.set('page', String(page));
-			if (per_page) params.set('per_page', String(per_page));
+			if (page != null) params.set('page', String(page));
+			if (per_page != null) params.set('per_page', String(per_page));
 			params.set('sort', 'updated');
-			return jsonResult(await gh(`/orgs/${githubOrg}/repos?${params}`));
+			return jsonResult(await gh(`/orgs/${org}/repos?${params}`));
 		},
-	);
 
-	server.tool(
-		'search_code',
-		'Search code across repositories in the organization',
-		{
-			query: z.string().describe('Search query (GitHub code search syntax)'),
-			page: z.number().optional().describe('Page number (default 1)'),
-			per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
-		},
-		async ({ query, page, per_page }) => {
+	search_code: (gh: GitHubFetch, org: string) =>
+		async ({ query, page, per_page }: { query: string; page?: number; per_page?: number }) => {
 			const params = new URLSearchParams();
-			params.set('q', `${query} org:${githubOrg}`);
-			if (page) params.set('page', String(page));
-			if (per_page) params.set('per_page', String(per_page));
+			params.set('q', `${query} org:${org}`);
+			if (page != null) params.set('page', String(page));
+			if (per_page != null) params.set('per_page', String(per_page));
 			return jsonResult(await gh(`/search/code?${params}`));
 		},
-	);
 
-	server.tool(
-		'get_file_content',
-		'Get the content of a file from a repository',
-		{
-			repo: z.string().describe('Repository name (without org prefix)'),
-			path: z.string().describe('File path within the repository'),
-			ref: z.string().optional().describe('Git ref (branch, tag, or SHA). Defaults to the default branch.'),
-		},
-		async ({ repo, path, ref }) => {
+	get_file_content: (gh: GitHubFetch, org: string) =>
+		async ({ repo, path, ref }: { repo: string; path: string; ref?: string }) => {
 			const params = ref ? `?ref=${encodeURIComponent(ref)}` : '';
-			return jsonResult(await gh(`/repos/${githubOrg}/${repo}/contents/${path}${params}`));
+			return jsonResult(await gh(`/repos/${org}/${repo}/contents/${path}${params}`));
 		},
-	);
 
-	server.tool(
-		'list_issues',
-		'List issues for a repository',
-		{
-			repo: z.string().describe('Repository name (without org prefix)'),
-			state: z.enum(['open', 'closed', 'all']).optional().describe('Filter by state (default open)'),
-			labels: z.string().optional().describe('Comma-separated list of label names'),
-			page: z.number().optional().describe('Page number (default 1)'),
-			per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
-		},
-		async ({ repo, state, labels, page, per_page }) => {
+	list_issues: (gh: GitHubFetch, org: string) =>
+		async ({
+			repo,
+			state,
+			labels,
+			page,
+			per_page,
+		}: {
+			repo: string;
+			state?: string;
+			labels?: string;
+			page?: number;
+			per_page?: number;
+		}) => {
 			const params = new URLSearchParams();
 			if (state) params.set('state', state);
 			if (labels) params.set('labels', labels);
-			if (page) params.set('page', String(page));
-			if (per_page) params.set('per_page', String(per_page));
-			return jsonResult(await gh(`/repos/${githubOrg}/${repo}/issues?${params}`));
+			if (page != null) params.set('page', String(page));
+			if (per_page != null) params.set('per_page', String(per_page));
+			return jsonResult(await gh(`/repos/${org}/${repo}/issues?${params}`));
 		},
-	);
 
-	server.tool(
-		'get_issue',
-		'Get details of a specific issue including comments',
-		{
-			repo: z.string().describe('Repository name (without org prefix)'),
-			issue_number: z.number().describe('Issue number'),
-		},
-		async ({ repo, issue_number }) => {
+	get_issue: (gh: GitHubFetch, org: string) =>
+		async ({ repo, issue_number }: { repo: string; issue_number: number }) => {
 			const [issue, comments] = await Promise.all([
-				gh(`/repos/${githubOrg}/${repo}/issues/${issue_number}`),
-				gh(`/repos/${githubOrg}/${repo}/issues/${issue_number}/comments`),
+				gh(`/repos/${org}/${repo}/issues/${issue_number}`),
+				gh(`/repos/${org}/${repo}/issues/${issue_number}/comments`),
 			]);
 			if (!issue.ok) return jsonResult(issue);
 			const issueData = (await issue.json()) as Record<string, unknown>;
 			const commentsData = comments.ok ? await comments.json() : [];
 			return textResult(JSON.stringify({ ...issueData, comments: commentsData }, null, 2));
 		},
-	);
 
-	server.tool(
-		'list_pull_requests',
-		'List pull requests for a repository',
-		{
-			repo: z.string().describe('Repository name (without org prefix)'),
-			state: z.enum(['open', 'closed', 'all']).optional().describe('Filter by state (default open)'),
-			page: z.number().optional().describe('Page number (default 1)'),
-			per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
-		},
-		async ({ repo, state, page, per_page }) => {
+	list_pull_requests: (gh: GitHubFetch, org: string) =>
+		async ({ repo, state, page, per_page }: { repo: string; state?: string; page?: number; per_page?: number }) => {
 			const params = new URLSearchParams();
 			if (state) params.set('state', state);
-			if (page) params.set('page', String(page));
-			if (per_page) params.set('per_page', String(per_page));
-			return jsonResult(await gh(`/repos/${githubOrg}/${repo}/pulls?${params}`));
+			if (page != null) params.set('page', String(page));
+			if (per_page != null) params.set('per_page', String(per_page));
+			return jsonResult(await gh(`/repos/${org}/${repo}/pulls?${params}`));
 		},
-	);
 
-	server.tool(
-		'get_pull_request',
-		'Get details of a specific pull request including the diff',
-		{
-			repo: z.string().describe('Repository name (without org prefix)'),
-			pull_number: z.number().describe('Pull request number'),
-		},
-		async ({ repo, pull_number }) => {
+	get_pull_request: (gh: GitHubFetch, org: string) =>
+		async ({ repo, pull_number }: { repo: string; pull_number: number }) => {
 			const [pr, diff] = await Promise.all([
-				gh(`/repos/${githubOrg}/${repo}/pulls/${pull_number}`),
-				gh(`/repos/${githubOrg}/${repo}/pulls/${pull_number}`, {
+				gh(`/repos/${org}/${repo}/pulls/${pull_number}`),
+				gh(`/repos/${org}/${repo}/pulls/${pull_number}`, {
 					headers: { accept: 'application/vnd.github.v3.diff' },
 				}),
 			]);
@@ -157,7 +109,53 @@ export function createServer(githubToken: string, githubOrg: string): McpServer 
 			const diffText = diff.ok ? await diff.text() : 'Could not fetch diff';
 			return textResult(JSON.stringify({ ...prData, diff: diffText }, null, 2));
 		},
-	);
+};
+
+export function createServer(githubToken: string, githubOrg: string): McpServer {
+	const server = new McpServer({ name: 'IC GitHub', version: '1.0.0' });
+	const gh = createGitHubFetch(githubToken);
+
+	server.tool('list_repos', 'List repositories in the organization', {
+		page: z.number().optional().describe('Page number (default 1)'),
+		per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
+	}, toolDefs.list_repos(gh, githubOrg));
+
+	server.tool('search_code', 'Search code across repositories in the organization', {
+		query: z.string().describe('Search query (GitHub code search syntax)'),
+		page: z.number().optional().describe('Page number (default 1)'),
+		per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
+	}, toolDefs.search_code(gh, githubOrg));
+
+	server.tool('get_file_content', 'Get the content of a file from a repository', {
+		repo: z.string().describe('Repository name (without org prefix)'),
+		path: z.string().describe('File path within the repository'),
+		ref: z.string().optional().describe('Git ref (branch, tag, or SHA). Defaults to the default branch.'),
+	}, toolDefs.get_file_content(gh, githubOrg));
+
+	server.tool('list_issues', 'List issues for a repository', {
+		repo: z.string().describe('Repository name (without org prefix)'),
+		state: z.enum(['open', 'closed', 'all']).optional().describe('Filter by state (default open)'),
+		labels: z.string().optional().describe('Comma-separated list of label names'),
+		page: z.number().optional().describe('Page number (default 1)'),
+		per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
+	}, toolDefs.list_issues(gh, githubOrg));
+
+	server.tool('get_issue', 'Get details of a specific issue including comments', {
+		repo: z.string().describe('Repository name (without org prefix)'),
+		issue_number: z.number().describe('Issue number'),
+	}, toolDefs.get_issue(gh, githubOrg));
+
+	server.tool('list_pull_requests', 'List pull requests for a repository', {
+		repo: z.string().describe('Repository name (without org prefix)'),
+		state: z.enum(['open', 'closed', 'all']).optional().describe('Filter by state (default open)'),
+		page: z.number().optional().describe('Page number (default 1)'),
+		per_page: z.number().optional().describe('Results per page, max 100 (default 30)'),
+	}, toolDefs.list_pull_requests(gh, githubOrg));
+
+	server.tool('get_pull_request', 'Get details of a specific pull request including the diff', {
+		repo: z.string().describe('Repository name (without org prefix)'),
+		pull_number: z.number().describe('Pull request number'),
+	}, toolDefs.get_pull_request(gh, githubOrg));
 
 	return server;
 }

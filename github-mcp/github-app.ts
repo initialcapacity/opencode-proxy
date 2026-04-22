@@ -1,8 +1,7 @@
-const GITHUB_API = 'https://api.github.com';
-const TOKEN_CACHE_DURATION_MS = 50 * 60 * 1000; // 50 minutes
+export type FetchFn = typeof fetch;
+export type Clock = () => number;
 
-let cachedToken: string | undefined;
-let cachedTokenExpiry = 0;
+const TOKEN_CACHE_DURATION_MS = 50 * 60 * 1000; // 50 minutes
 
 function base64UrlEncode(data: ArrayBuffer | Uint8Array): string {
 	const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
@@ -11,8 +10,14 @@ function base64UrlEncode(data: ArrayBuffer | Uint8Array): string {
 	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function signAppJwt(appId: string, privateKeyPem: string): Promise<string> {
-	const now = Math.floor(Date.now() / 1000);
+function stripPemMarkers(pem: string): string {
+	return pem
+		.replace(/-----BEGIN (RSA )?PRIVATE KEY-----/, '')
+		.replace(/-----END (RSA )?PRIVATE KEY-----/, '')
+		.replace(/\s/g, '');
+}
+
+async function signAppJwt(appId: string, privateKeyPem: string, now: number): Promise<string> {
 	const header = { alg: 'RS256', typ: 'JWT' };
 	const payload = { iss: appId, iat: now - 60, exp: now + 600 };
 
@@ -20,10 +25,7 @@ async function signAppJwt(appId: string, privateKeyPem: string): Promise<string>
 	const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
 	const signingInput = `${encodedHeader}.${encodedPayload}`;
 
-	const keyData = privateKeyPem
-		.replace(/-----BEGIN RSA PRIVATE KEY-----/, '')
-		.replace(/-----END RSA PRIVATE KEY-----/, '')
-		.replace(/\s/g, '');
+	const keyData = stripPemMarkers(privateKeyPem);
 	const binaryKey = Uint8Array.from(atob(keyData), (c) => c.charCodeAt(0));
 
 	const key = await crypto.subtle.importKey(
@@ -34,39 +36,53 @@ async function signAppJwt(appId: string, privateKeyPem: string): Promise<string>
 		['sign'],
 	);
 
-	const signature = await crypto.subtle.sign(
-		'RSASSA-PKCS1-v1_5',
-		key,
-		new TextEncoder().encode(signingInput) as unknown as ArrayBuffer,
-	);
+	const signingData = new TextEncoder().encode(signingInput);
+	const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, signingData);
 
 	return `${signingInput}.${base64UrlEncode(signature)}`;
 }
 
-export async function getInstallationToken(appId: string, privateKey: string, installationId: string): Promise<string> {
-	if (cachedToken && Date.now() < cachedTokenExpiry) {
-		return cachedToken;
+export class GitHubAppAuth {
+	private cachedToken: string | undefined;
+	private cachedTokenExpiry = 0;
+
+	constructor(
+		private readonly appId: string,
+		private readonly privateKey: string,
+		private readonly installationId: string,
+		private readonly fetchFn: FetchFn = globalThis.fetch.bind(globalThis),
+		private readonly clock: Clock = () => Math.floor(Date.now() / 1000),
+	) {}
+
+	async getInstallationToken(): Promise<string> {
+		const now = this.clock();
+		if (this.cachedToken && now < this.cachedTokenExpiry) {
+			return this.cachedToken;
+		}
+
+		const appJwt = await signAppJwt(this.appId, this.privateKey, now);
+
+		const response = await this.fetchFn(
+			`https://api.github.com/app/installations/${this.installationId}/access_tokens`,
+			{
+				method: 'POST',
+				headers: {
+					accept: 'application/vnd.github.v3+json',
+					authorization: `Bearer ${appJwt}`,
+					'user-agent': 'ic-github-mcp',
+				},
+			},
+		);
+
+		if (!response.ok) {
+			const body = await response.text();
+			throw new Error(`Failed to get installation token: ${response.status} ${body}`);
+		}
+
+		const data = (await response.json()) as { token: string };
+		this.cachedToken = data.token;
+		this.cachedTokenExpiry = now + TOKEN_CACHE_DURATION_MS / 1000;
+
+		return this.cachedToken;
 	}
-
-	const appJwt = await signAppJwt(appId, privateKey);
-
-	const response = await fetch(`${GITHUB_API}/app/installations/${installationId}/access_tokens`, {
-		method: 'POST',
-		headers: {
-			accept: 'application/vnd.github.v3+json',
-			authorization: `Bearer ${appJwt}`,
-			'user-agent': 'ic-github-mcp',
-		},
-	});
-
-	if (!response.ok) {
-		const body = await response.text();
-		throw new Error(`Failed to get installation token: ${response.status} ${body}`);
-	}
-
-	const data = (await response.json()) as { token: string };
-	cachedToken = data.token;
-	cachedTokenExpiry = Date.now() + TOKEN_CACHE_DURATION_MS;
-
-	return cachedToken;
 }
