@@ -5,7 +5,8 @@ import { createLoggingMiddleware } from './logging';
 import { GatewayProxy } from './gateway';
 import { JwtVerifier } from './jwt';
 import { ModelCatalog } from './models';
-import { landingPage } from './landing';
+import { CodexCatalog } from './codex';
+import { icLogoFaviconSvg, landingPage } from './landing';
 
 type Bindings = {
 	CF_ACCESS_TEAM_DOMAIN: string;
@@ -40,6 +41,8 @@ app.get('/.well-known/opencode', async (c) => {
 	return c.json(buildDiscoveryPayload(origin, modelsByGateway));
 });
 
+app.get('/.well-known/codex', (c) => c.json(new CodexCatalog().payload()));
+
 app.use('/v1/*', async (c, next) => {
 	const provider = c.req.path.split('/')[2];
 	if (!provider || !isGatewayProvider(provider)) return c.json({ error: 'Unknown provider' }, 404);
@@ -59,6 +62,12 @@ app.all('/v1/:provider/*', (c) => {
 });
 
 app.get('/', (c) => c.html(landingPage(new URL(c.req.url).origin)));
+
+app.get('/favicon.svg', (c) => {
+	c.header('Content-Type', 'image/svg+xml');
+	c.header('Cache-Control', 'public, max-age=86400');
+	return c.body(icLogoFaviconSvg);
+});
 
 app.all('*', (c) => c.json({ error: 'Not found' }, 404));
 
