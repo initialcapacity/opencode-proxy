@@ -4,9 +4,11 @@ export type Clock = () => number;
 const TOKEN_CACHE_DURATION_MS = 50 * 60 * 1000; // 50 minutes
 
 function base64UrlEncode(data: ArrayBuffer | Uint8Array): string {
+	// Loop rather than `String.fromCharCode(...bytes)` so buffers larger than the argument-length
+	// limit (~100KB on V8) still encode correctly.
 	const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
 	let binary = '';
-	for (const byte of bytes) binary += String.fromCharCode(byte);
+	for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
 	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 

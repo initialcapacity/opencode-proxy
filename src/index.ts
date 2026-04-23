@@ -22,14 +22,43 @@ type App = { Bindings: Bindings; Variables: AuthVariables };
 const app = new Hono<App>();
 
 // Lazily constructed on first request because env is only available in request scope.
-// Workers isolates are long-lived, so this runs once per cold start.
+// Workers isolates are long-lived, so these run once per cold start and are shared
+// across all requests served by the isolate.
 let authMiddleware: MiddlewareHandler<App> | undefined;
+let gatewayProxy: GatewayProxy | undefined;
+let modelCatalog: ModelCatalog | undefined;
+
+function getAuthMiddleware(env: Bindings): MiddlewareHandler<App> {
+	if (!authMiddleware) {
+		authMiddleware = createAuthMiddleware<App>(new JwtVerifier(env.CF_ACCESS_TEAM_DOMAIN, env.CF_ACCESS_AUD));
+	}
+	return authMiddleware;
+}
+
+function getGatewayProxy(env: Bindings): GatewayProxy {
+	if (!gatewayProxy) {
+		gatewayProxy = new GatewayProxy(env.CF_ACCOUNT_ID, env.CF_GATEWAY_NAME, env.CF_AIG_TOKEN);
+	}
+	return gatewayProxy;
+}
+
+function getModelCatalog(env: Bindings): ModelCatalog {
+	if (!modelCatalog) {
+		modelCatalog = new ModelCatalog(env.MODELS);
+	}
+	return modelCatalog;
+}
 
 app.use(createLoggingMiddleware());
 
+app.onError((err, c) => {
+	console.error(JSON.stringify({ error: err.message, stack: err.stack, path: c.req.path }));
+	return c.json({ error: 'Internal server error' }, 500);
+});
+
 app.get('/.well-known/opencode', async (c) => {
 	const origin = new URL(c.req.url).origin;
-	const catalog = new ModelCatalog(c.env.MODELS);
+	const catalog = getModelCatalog(c.env);
 	const modelsByGateway: Record<string, Record<string, Record<string, unknown>>> = {};
 
 	await Promise.all(
@@ -44,22 +73,18 @@ app.get('/.well-known/opencode', async (c) => {
 app.get('/.well-known/codex', (c) => c.json(new CodexCatalog().payload()));
 
 app.use('/v1/*', async (c, next) => {
+	// Path is `/v1/<provider>/...`. Reject unknown providers before the auth check so that
+	// misrouted requests fail fast with a clear error instead of a 401.
 	const provider = c.req.path.split('/')[2];
 	if (!provider || !isGatewayProvider(provider)) return c.json({ error: 'Unknown provider' }, 404);
 	await next();
 });
 
-app.use('/v1/*', (c, next) => {
-	if (!authMiddleware) {
-		authMiddleware = createAuthMiddleware<App>(new JwtVerifier(c.env.CF_ACCESS_TEAM_DOMAIN, c.env.CF_ACCESS_AUD));
-	}
-	return authMiddleware(c, next);
-});
+app.use('/v1/*', (c, next) => getAuthMiddleware(c.env)(c, next));
 
-app.all('/v1/:provider/*', (c) => {
-	const proxy = new GatewayProxy(c.env.CF_ACCOUNT_ID, c.env.CF_GATEWAY_NAME, c.env.CF_AIG_TOKEN);
-	return proxy.proxy(c.req.raw, c.req.param('provider') as GatewayProvider, c.get('userEmail'));
-});
+app.all('/v1/:provider/*', (c) =>
+	getGatewayProxy(c.env).proxy(c.req.raw, c.req.param('provider') as GatewayProvider, c.get('userEmail')),
+);
 
 app.get('/', (c) => c.html(landingPage(new URL(c.req.url).origin)));
 
@@ -74,7 +99,6 @@ app.all('*', (c) => c.json({ error: 'Not found' }, 404));
 export default {
 	fetch: app.fetch,
 	async scheduled(_controller: ScheduledController, env: Bindings, _ctx: ExecutionContext) {
-		const catalog = new ModelCatalog(env.MODELS);
-		await catalog.refresh();
+		await getModelCatalog(env).refresh();
 	},
 };

@@ -23,7 +23,8 @@ export async function generateKeyPair(): Promise<JWKPair> {
 }
 
 function base64UrlEncode(data: Uint8Array): string {
-	const binary = Array.from(data, (b) => String.fromCharCode(b)).join('');
+	let binary = '';
+	for (let i = 0; i < data.length; i++) binary += String.fromCharCode(data[i]);
 	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 

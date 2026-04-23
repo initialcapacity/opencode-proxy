@@ -1,5 +1,5 @@
 import { createMcpHandler } from 'agents/mcp';
-import { extractToken } from '../src/auth';
+import { authenticate } from '../src/auth';
 import { JwtVerifier } from '../src/jwt';
 import { GitHubAppAuth } from './github-app';
 import { createServer } from './tools';
@@ -20,21 +20,11 @@ let githubAuth: GitHubAppAuth | undefined;
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		const token = extractToken(request);
-		if (!token) {
-			return Response.json({ error: 'Missing authorization' }, { status: 401 });
-		}
-
 		if (!verifier) {
 			verifier = new JwtVerifier(env.CF_ACCESS_TEAM_DOMAIN, env.CF_ACCESS_AUD);
 		}
-
-		try {
-			await verifier.verify(token);
-		} catch (e) {
-			const message = e instanceof Error ? e.message : 'Authentication failed';
-			return Response.json({ error: message }, { status: 401 });
-		}
+		const auth = await authenticate(request, verifier);
+		if (auth instanceof Response) return auth;
 
 		if (!githubAuth) {
 			githubAuth = new GitHubAppAuth(env.GITHUB_APP_ID, env.GITHUB_APP_PRIVATE_KEY, env.GITHUB_APP_INSTALLATION_ID);

@@ -35,12 +35,13 @@ export class JwtVerifier {
 		const parts = token.split('.');
 		if (parts.length !== 3) throw new Error('Invalid JWT format');
 
-		const header = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[0]))) as {
+		const decoder = new TextDecoder();
+		const header = JSON.parse(decoder.decode(base64UrlDecode(parts[0]))) as {
 			alg?: unknown;
 			kid?: unknown;
 			typ?: unknown;
 		};
-		const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[1]))) as AccessJWTPayload;
+		const payload = JSON.parse(decoder.decode(base64UrlDecode(parts[1]))) as AccessJWTPayload;
 
 		// Reject tokens that claim an algorithm other than RS256. Cloudflare Access only ever issues
 		// RS256 tokens; accepting anything else invites algorithm-confusion attacks.
@@ -86,10 +87,15 @@ export class JwtVerifier {
 		if (this.cachedKeysPromise && this.now() - this.cachedAt < KEY_CACHE_TTL_MS) {
 			return this.cachedKeysPromise;
 		}
+		// Assign cachedAt optimistically so concurrent callers coalesce onto this in-flight fetch.
+		// After the fetch resolves, overwrite cachedAt with the completion time so TTL reflects
+		// how long the cached keys are actually valid (not how long ago the fetch started).
 		this.cachedAt = this.now();
 		this.cachedKeysPromise = this.fetchKeys(this.teamDomain);
 		try {
-			return await this.cachedKeysPromise;
+			const keys = await this.cachedKeysPromise;
+			this.cachedAt = this.now();
+			return keys;
 		} catch (e) {
 			this.cachedKeysPromise = undefined;
 			throw e;

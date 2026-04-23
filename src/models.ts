@@ -35,7 +35,9 @@ function sanitizeModels(
 	const result: Record<string, Record<string, unknown>> = {};
 	for (const [id, model] of Object.entries(models)) {
 		const sanitized = { ...model };
-		if (typeof sanitized.experimental !== 'boolean' && sanitized.experimental != null) {
+		// models.dev sometimes nests a feature matrix under `experimental`. OpenCode
+		// expects a boolean, so coerce any object-shaped value to true.
+		if (typeof sanitized.experimental === 'object' && sanitized.experimental !== null) {
 			sanitized.experimental = true;
 		}
 		result[id] = sanitized;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AGENTS, COMMANDS } from '../src/agents';
+import { AGENTS, COMMANDS } from '../src/agents.generated';
 
 describe('agents.generated', () => {
 	it('defines a code-reviewer subagent', () => {

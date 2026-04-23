@@ -16,7 +16,7 @@ export class GatewayProxy {
 		const downstreamPath = rest + url.search;
 		const target = this.buildTargetUrl(provider, downstreamPath);
 
-		const headers = this.buildHeaders(new Headers(request.headers), userEmail);
+		const headers = this.buildHeaders(request.headers, userEmail);
 
 		const resp = await this.fetchFn(target, {
 			method: request.method,

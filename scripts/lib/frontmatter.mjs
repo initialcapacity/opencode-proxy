@@ -15,12 +15,10 @@ export function parseFrontmatter(source, file) {
 	const data = {};
 	const lines = header.split('\n');
 
-	let currentKey = null;
 	let currentMap = null;
 
 	for (const raw of lines) {
 		if (!raw.trim()) {
-			currentKey = null;
 			currentMap = null;
 			continue;
 		}
@@ -44,13 +42,10 @@ export function parseFrontmatter(source, file) {
 
 		if (rest === '') {
 			// Begin a nested map
-			const map = {};
-			data[key] = map;
-			currentKey = key;
-			currentMap = map;
+			currentMap = {};
+			data[key] = currentMap;
 		} else {
 			data[key] = parseScalar(rest);
-			currentKey = null;
 			currentMap = null;
 		}
 	}

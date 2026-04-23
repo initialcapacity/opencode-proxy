@@ -40,6 +40,10 @@ export const toolDefs = {
 
 	search_code: (gh: GitHubFetch, org: string) =>
 		async ({ query, page, per_page }: { query: string; page?: number; per_page?: number }) => {
+			// Prevent scope escape via caller-supplied org:/user:/repo: qualifiers.
+			if (/\b(org|user|repo):/i.test(query)) {
+				return textResult('GitHub MCP error: query must not contain org:, user:, or repo: qualifiers');
+			}
 			const params = new URLSearchParams();
 			params.set('q', `${query} org:${org}`);
 			if (page != null) params.set('page', String(page));
@@ -49,8 +53,11 @@ export const toolDefs = {
 
 	get_file_content: (gh: GitHubFetch, org: string) =>
 		async ({ repo, path, ref }: { repo: string; path: string; ref?: string }) => {
+			// Encode each path segment so `#`, `?`, and spaces in filenames don't corrupt the URL;
+			// preserve the `/` separators so the GitHub contents API resolves the tree correctly.
+			const encodedPath = path.split('/').map(encodeURIComponent).join('/');
 			const params = ref ? `?ref=${encodeURIComponent(ref)}` : '';
-			return jsonResult(await gh(`/repos/${org}/${repo}/contents/${path}${params}`));
+			return jsonResult(await gh(`/repos/${org}/${repo}/contents/${encodedPath}${params}`));
 		},
 
 	list_issues: (gh: GitHubFetch, org: string) =>

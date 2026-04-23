@@ -1,4 +1,4 @@
-import { AGENTS, COMMANDS } from './agents';
+import { AGENTS, COMMANDS } from './agents.generated';
 
 export const GATEWAY_PROVIDERS = ['anthropic', 'openai', 'compat'] as const;
 
@@ -46,7 +46,7 @@ export function buildDiscoveryPayload(origin: string, modelsByGateway: Record<st
 			env: 'CF_ACCESS_TOKEN',
 		},
 		config: {
-			enabled_providers: [...OPENCODE_PROVIDERS],
+			enabled_providers: OPENCODE_PROVIDERS,
 			provider,
 			mcp: {
 				github: {

@@ -14,20 +14,20 @@ const OUTPUT = join(ROOT, 'src', 'codex.generated.ts');
 const CATEGORIES = new Set(['architecture', 'code', 'testing']);
 const SEVERITIES = new Set(['critical', 'important', 'suggestion', 'nit']);
 
-function validateRule({ data, body }, file) {
+function validateRule({ data, body }, fileName) {
 	for (const field of ['id', 'title', 'category', 'severity']) {
-		if (!data[field]) throw new Error(`${file}: missing required frontmatter field "${field}"`);
+		if (!data[field]) throw new Error(`${fileName}: missing required frontmatter field "${field}"`);
 	}
 	if (!/^IC-[A-Z]+-\d{3}$/.test(data.id)) {
-		throw new Error(`${file}: id "${data.id}" must match IC-<PREFIX>-<NNN>`);
+		throw new Error(`${fileName}: id "${data.id}" must match IC-<PREFIX>-<NNN>`);
 	}
 	if (!CATEGORIES.has(data.category)) {
-		throw new Error(`${file}: category "${data.category}" must be one of ${[...CATEGORIES].join(', ')}`);
+		throw new Error(`${fileName}: category "${data.category}" must be one of ${[...CATEGORIES].join(', ')}`);
 	}
 	if (!SEVERITIES.has(data.severity)) {
-		throw new Error(`${file}: severity "${data.severity}" must be one of ${[...SEVERITIES].join(', ')}`);
+		throw new Error(`${fileName}: severity "${data.severity}" must be one of ${[...SEVERITIES].join(', ')}`);
 	}
-	if (!body) throw new Error(`${file}: rationale body is empty`);
+	if (!body) throw new Error(`${fileName}: rationale body is empty`);
 }
 
 async function main() {
