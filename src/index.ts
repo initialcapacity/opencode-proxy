@@ -5,7 +5,6 @@ import { createLoggingMiddleware } from './logging';
 import { GatewayProxy } from './gateway';
 import { JwtVerifier } from './jwt';
 import { ModelCatalog } from './models';
-import { CodexCatalog } from './codex';
 import { icLogoFaviconSvg, landingPage } from './landing';
 
 type Bindings = {
@@ -40,8 +39,6 @@ app.get('/.well-known/opencode', async (c) => {
 
 	return c.json(buildDiscoveryPayload(origin, modelsByGateway));
 });
-
-app.get('/.well-known/codex', (c) => c.json(new CodexCatalog().payload()));
 
 app.use('/v1/*', async (c, next) => {
 	const provider = c.req.path.split('/')[2];
