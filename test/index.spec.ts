@@ -167,6 +167,8 @@ describe("integration", () => {
     expect(body).toContain("brew install anomalyco/tap/opencode cloudflared");
     expect(body).toContain("opencode auth login");
     expect(body).toContain("opencode.icap.dev");
+    expect(body).toContain("opencode-proxy#readme");
+    expect(body).toContain(">docs<");
   });
 
   it("serves the IC logo as an SVG favicon", async () => {

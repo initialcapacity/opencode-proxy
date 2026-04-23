@@ -27,6 +27,67 @@ zero-config access to AI models, GitHub tooling, and a shared code-review agent 
    opencode
    ```
 
+## What you get
+
+- Shared `ic-*` model providers routed through IC's Cloudflare AI Gateway. Provider API keys stay server-side.
+- A preconfigured GitHub MCP server for repo, issue, PR, and org-wide code search workflows.
+- A built-in `@code-reviewer` subagent and `/review` slash command tuned to the IC Codex.
+
+## Verify setup
+
+After logging in, these commands should work:
+
+```shell
+opencode models
+opencode mcp list
+```
+
+You should see IC providers such as `ic-anthropic`, `ic-gemini`, `ic-openai`, and
+`ic-workers-ai`, plus a `github` MCP server at `https://github-mcp.icap.dev/mcp`.
+
+Then launch OpenCode and confirm the IC-specific tools are available:
+
+```shell
+opencode
+```
+
+- Run `/review` in any git repo to confirm the reviewer is present.
+- Ask for a GitHub action like `List the open pull requests in opencode-proxy`.
+
+If model or MCP requests start failing with auth errors, re-run:
+
+```shell
+opencode auth login https://opencode.icap.dev
+```
+
+## First things to try
+
+Once `opencode` is running, these are good first prompts for a new IC user:
+
+1. Understand the repo you're in.
+
+   ```text
+   How does authentication work in this repo?
+   ```
+
+2. Confirm the GitHub MCP server is wired up.
+
+   ```text
+   List the open pull requests in opencode-proxy.
+   ```
+
+3. Try org-wide code search.
+
+   ```text
+   Search code across the organization for "cloudflared access login"
+   ```
+
+4. Run the IC-specific reviewer.
+
+   ```text
+   /review
+   ```
+
 ## Reviewing code
 
 Every session ships with a `@code-reviewer` subagent and a `/review` slash command. The
@@ -156,6 +217,15 @@ Available tools:
 | `get_issue`          | Get details of a specific issue including comments                                                                    |
 | `list_pull_requests` | List pull requests for a repository                                                                                   |
 | `get_pull_request`   | Get details of a specific pull request including the diff                                                             |
+
+Example prompts:
+
+```text
+List the most recently updated repos in the organization.
+Show the open pull requests for opencode-proxy.
+Get issue 123 in opencode-proxy and summarize the discussion.
+Search code across the organization for "cloudflared access login".
+```
 
 ### IC Codex
 
