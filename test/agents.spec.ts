@@ -26,11 +26,17 @@ describe('agents.generated', () => {
 	it("spells out the reviewer's output format with severity tags and rule IDs", () => {
 		const prompt = AGENTS['code-reviewer'].prompt as string;
 		expect(prompt).toContain('[<severity>]');
-		expect(prompt).toContain('[<rule-id-or-NONE>]');
+		expect(prompt).toContain('[<IC-rule-id>]');
 		expect(prompt).toContain('critical');
 		expect(prompt).toContain('important');
 		expect(prompt).toContain('suggestion');
 		expect(prompt).toContain('nit');
+	});
+
+	it('restricts the reviewer to IC Codex findings only', () => {
+		const prompt = AGENTS['code-reviewer'].prompt as string;
+		expect(prompt).toContain('Only raise findings that map to a specific IC Codex rule');
+		expect(prompt).toContain('No IC Codex violations found.');
 	});
 
 	it('defines a /review command that delegates to code-reviewer as a subtask', () => {

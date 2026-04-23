@@ -46,9 +46,11 @@ Or invoke the agent directly with your own context:
 ```
 
 The reviewer is a subagent — it runs in an isolated child session and posts categorized
-findings (Architecture, Code quality, Testing, Security, Correctness, Clarity) with
-severity tags (`critical`, `important`, `suggestion`, `nit`) and rule citations like
-`IC-TEST-009`. See [Code review agent](#code-review-agent) below for the internals.
+findings (Architecture, Code quality, Testing) with severity tags (`critical`, `important`,
+`suggestion`, `nit`) and rule citations like `IC-TEST-009`. The reviewer's scope is
+strictly the Codex: it only flags violations of a specific IC rule and says nothing about
+concerns the Codex doesn't cover. See [Code review agent](#code-review-agent) below for
+the internals.
 
 ## Architecture
 
@@ -188,10 +190,10 @@ sequenceDiagram
 ```
 
 The reviewer runs as a subagent (read-only, `edit: deny`, `webfetch: allow`) and produces
-findings grouped by category — Architecture, Code quality, Testing, Security, Correctness,
-Clarity — with severity tags and rule citations. Findings that match an IC Codex rule cite
-the rule ID; findings that don't (security, correctness, clarity) are flagged with
-`[NONE]`.
+findings grouped by Codex category — Architecture, Code quality, Testing — with severity
+tags and rule citations. Every finding must map to a specific `IC-*` rule; concerns the
+Codex doesn't cover are intentionally out of scope. This keeps the reviewer predictable:
+as the Codex grows, so does the scope of the review.
 
 Source files:
 
