@@ -71,4 +71,15 @@ describe('buildDiscoveryPayload', () => {
 			},
 		});
 	});
+
+	it('includes the code-reviewer agent and /review command', () => {
+		const payload = buildDiscoveryPayload(origin);
+		const agent = payload.config.agent['code-reviewer'] as Record<string, unknown>;
+		expect(agent.mode).toBe('subagent');
+		expect(agent.prompt).toEqual(expect.stringContaining('IC Codex'));
+
+		const command = payload.config.command.review as Record<string, unknown>;
+		expect(command.agent).toBe('code-reviewer');
+		expect(command.subtask).toBe(true);
+	});
 });

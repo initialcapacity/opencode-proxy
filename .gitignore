@@ -48,6 +48,12 @@ dist
 .cache
 .parcel-cache
 
+# Generated from codex/rules/*.md by scripts/build-codex.mjs
+src/codex.generated.ts
+
+# Generated from agents/*.md and commands/*.md by scripts/build-agents.mjs
+src/agents.generated.ts
+
 # Editor
 .vscode-test
 

@@ -39,6 +39,10 @@ describe('integration', () => {
 		expect(body.config.mcp.github.type).toBe('remote');
 		expect(body.config.mcp.github.url).toBe('https://github-mcp.icap.dev/mcp');
 		expect(body.config.mcp.github.enabled).toBe(true);
+		expect(body.config.agent['code-reviewer'].mode).toBe('subagent');
+		expect(body.config.agent['code-reviewer'].prompt).toContain('IC Codex');
+		expect(body.config.command.review.agent).toBe('code-reviewer');
+		expect(body.config.command.review.subtask).toBe(true);
 	});
 
 	it('includes models from KV in discovery config', async () => {
@@ -96,6 +100,22 @@ describe('integration', () => {
 		const response = await SELF.fetch('https://opencode.icap.dev/unknown');
 
 		expect(response.status).toBe(404);
+	});
+
+	it('returns codex rules without authentication', async () => {
+		const response = await SELF.fetch('https://opencode.icap.dev/.well-known/codex');
+		expect(response.status).toBe(200);
+
+		const body = (await response.json()) as {
+			version: number;
+			count: number;
+			rules: Array<{ id: string; title: string; category: string; severity: string; rationale: string }>;
+		};
+		expect(body.version).toBe(1);
+		expect(body.count).toBe(body.rules.length);
+		expect(body.rules.length).toBeGreaterThan(0);
+		expect(body.rules.every((r) => /^IC-[A-Z]+-\d{3}$/.test(r.id))).toBe(true);
+		expect(body.rules.some((r) => r.id === 'IC-TEST-009' && r.title === 'Avoid mocks')).toBe(true);
 	});
 
 	it('returns 404 for unknown providers without requiring authentication', async () => {

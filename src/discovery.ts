@@ -1,3 +1,5 @@
+import { AGENTS, COMMANDS } from './agents';
+
 export const GATEWAY_PROVIDERS = ['anthropic', 'openai', 'compat'] as const;
 
 export type GatewayProvider = (typeof GATEWAY_PROVIDERS)[number];
@@ -56,6 +58,8 @@ export function buildDiscoveryPayload(origin: string, modelsByGateway: Record<st
 					enabled: true,
 				},
 			},
+			agent: AGENTS,
+			command: COMMANDS,
 		},
 	};
 }

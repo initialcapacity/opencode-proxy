@@ -1,8 +1,8 @@
 # OpenCode Proxy
 
 A pair of Cloudflare Workers that give developers at [Initial Capacity](https://initialcapacity.io)
-zero-config access to AI models and GitHub tooling through [OpenCode](https://opencode.ai/),
-authenticated via Cloudflare Access SSO.
+zero-config access to AI models, GitHub tooling, and a shared code-review agent through
+[OpenCode](https://opencode.ai/), authenticated via Cloudflare Access SSO.
 
 ## Set up
 
@@ -27,13 +27,36 @@ authenticated via Cloudflare Access SSO.
     opencode
     ```
 
+## Reviewing code
+
+Every session ships with a `@code-reviewer` subagent and a `/review` slash command. The
+reviewer knows the [IC Codex](#ic-codex) — Initial Capacity's engineering principles codified
+as ~40 machine-readable rules — and cites specific rule IDs when flagging findings.
+
+Run it on the current branch's diff against `origin/main`:
+
+```
+/review
+```
+
+Or invoke the agent directly with your own context:
+
+```
+@code-reviewer review the changes I just staged
+```
+
+The reviewer is a subagent — it runs in an isolated child session and posts categorized
+findings (Architecture, Code quality, Testing, Security, Correctness, Clarity) with
+severity tags (`critical`, `important`, `suggestion`, `nit`) and rule citations like
+`IC-TEST-009`. See [Code review agent](#code-review-agent) below for the internals.
+
 ## Architecture
 
 Two Workers are deployed:
 
 | Worker | Domain | Purpose |
 |--------|--------|---------|
-| `opencode-proxy` | `opencode.icap.dev` | AI model proxy + discovery endpoint |
+| `opencode-proxy` | `opencode.icap.dev` | AI model proxy, discovery endpoint, Codex endpoint, agent + command config |
 | `github-mcp` | `github-mcp.icap.dev` | GitHub MCP server |
 
 ### Discovery and authentication
@@ -127,6 +150,61 @@ Available tools:
 | `list_pull_requests` | List pull requests for a repository |
 | `get_pull_request` | Get details of a specific pull request including the diff |
 
+### IC Codex
+
+The IC Codex is the machine-readable form of [kt.dev](https://kt.dev) — Initial Capacity's
+opinionated engineering principles — split into ~40 rules with stable IDs. Each rule lives
+in its own markdown file under `codex/rules/` with frontmatter declaring its `id`,
+`category` (`architecture`, `code`, `testing`), and `severity_default`. The full corpus is
+published at `https://opencode.icap.dev/.well-known/codex` as JSON.
+
+```
+curl -s https://opencode.icap.dev/.well-known/codex | jq '.rules[] | {id, title, severity}'
+```
+
+Rules are compiled at build time from `codex/rules/*.md` into `src/codex.generated.ts` by
+`scripts/build-codex.mjs`. See `codex/README.md` for the authoring format.
+
+### Code review agent
+
+Every OpenCode session at IC picks up a `code-reviewer` subagent and a `/review` slash
+command via the discovery payload. The agent's system prompt is compiled at build time
+from `agents/code-reviewer.md` with the full IC Codex inlined as an appendix, so the
+reviewer always has the current rule corpus in context.
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant OC as opencode (session)
+    participant CR as @code-reviewer (subtask)
+    participant GW as AI Gateway
+
+    Dev->>OC: /review
+    OC->>CR: spawn subtask with template<br/>(git diff + AGENTS.md)
+    CR->>GW: inference w/ IC Codex in system prompt
+    GW-->>CR: categorized findings
+    CR-->>OC: structured review
+    OC-->>Dev: rendered output
+```
+
+The reviewer runs as a subagent (read-only, `edit: deny`, `webfetch: allow`) and produces
+findings grouped by category — Architecture, Code quality, Testing, Security, Correctness,
+Clarity — with severity tags and rule citations. Findings that match an IC Codex rule cite
+the rule ID; findings that don't (security, correctness, clarity) are flagged with
+`[NONE]`.
+
+Source files:
+
+| Path | Purpose |
+|------|---------|
+| `agents/code-reviewer.md` | Agent frontmatter + system prompt |
+| `commands/review.md` | `/review` slash command template |
+| `scripts/build-agents.mjs` | Compiles both into `src/agents.generated.ts`, inlining the Codex into the agent prompt |
+
+The compiled agent and command are served in the `config.agent` and `config.command`
+blocks of the discovery payload, so every developer gets them automatically on next
+session — no local configuration.
+
 ## Project structure
 
 ```
@@ -139,7 +217,20 @@ opencode-proxy/
 │   ├── auth.ts                 # JWT middleware + extractToken
 │   ├── jwt.ts                  # Cloudflare Access JWT verification
 │   ├── logging.ts              # Request logging middleware
+│   ├── codex.ts                # IC Codex catalog (DI wrapper)
+│   ├── agents.ts               # Compiled agents + commands (DI wrapper)
 │   └── landing.ts              # HTML landing page
+├── codex/                      # IC Codex source
+│   ├── README.md               # Rule authoring format
+│   └── rules/                  # One markdown file per rule
+├── agents/                     # OpenCode agent definitions (markdown)
+│   └── code-reviewer.md
+├── commands/                   # OpenCode slash command definitions (markdown)
+│   └── review.md
+├── scripts/                    # Build scripts (Node ESM)
+│   ├── build-codex.mjs         # codex/rules/ → src/codex.generated.ts
+│   ├── build-agents.mjs        # agents/ + commands/ → src/agents.generated.ts
+│   └── lib/frontmatter.mjs     # Shared YAML frontmatter parser
 ├── github-mcp/                 # github-mcp worker
 │   ├── index.ts                # Worker entry point + auth
 │   ├── tools.ts                # MCP tool definitions
@@ -156,7 +247,19 @@ npm test                  # run all tests
 npm run typecheck         # typecheck all projects
 npm run dev               # opencode-proxy local dev
 npm run dev:github-mcp    # github-mcp local dev
+npm run build:config      # regenerate codex + agents (runs automatically on pre-hooks)
 ```
+
+Editing Codex rules, the agent prompt, or the `/review` command means editing markdown
+files:
+
+- Add or change a rule: `codex/rules/IC-<CATEGORY>-<NNN>.md` (see `codex/README.md`).
+- Change the reviewer's behavior: `agents/code-reviewer.md`.
+- Change the `/review` template: `commands/review.md`.
+
+The pre-hooks on `npm test`, `npm run typecheck`, `npm run deploy`, and `npm run dev`
+regenerate `src/codex.generated.ts` and `src/agents.generated.ts` automatically, so you
+never need to run the build script by hand.
 
 Deployments are handled by the CI/CD pipeline on push to `main`. Do not run `npm run deploy`
 locally.

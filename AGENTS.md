@@ -25,6 +25,7 @@ Guidelines for AI coding agents working on this project.
 - Run tests after every change. Don't commit broken code.
 - Let the CI/CD pipeline handle deployments. Don't run `npm run deploy` or `wrangler deploy` locally.
 - Write concise commit messages focused on what changed and why.
+- Keep the architecture docs and usage docs updated in the README.md
 
 ## Testing
 
