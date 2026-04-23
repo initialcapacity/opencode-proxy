@@ -86,7 +86,9 @@ sequenceDiagram
 
 All model requests are routed through the `opencode-proxy` worker, which validates the Cloudflare
 Access JWT and forwards to [AI Gateway](https://developers.cloudflare.com/ai-gateway/). Provider API
-keys are stored in AI Gateway (BYOK) — they never touch developer machines.
+keys are stored in AI Gateway (BYOK) — they never touch developer machines. OpenCode sends the
+Cloudflare Access JWT using the auth header expected by each SDK: `x-api-key` for Anthropic,
+`x-goog-api-key` for Gemini, and `Authorization: Bearer` for OpenAI-compatible clients.
 
 ```mermaid
 sequenceDiagram
@@ -114,8 +116,10 @@ Four providers are available:
 | `ic-workers-ai` | `compat` | `@ai-sdk/openai-compatible` |
 
 Models are fetched from [models.dev](https://models.dev) hourly by a cron trigger and cached in
-Workers KV. The discovery endpoint includes the full model catalog so OpenCode can populate the
-model picker without any external calls.
+Workers KV. If discovery sees a provider missing from KV, it refreshes the catalog once on demand
+so newly added providers show up immediately instead of waiting for the next cron run. The
+discovery endpoint includes the full model catalog so OpenCode can populate the model picker
+without any external calls.
 
 ### GitHub MCP server
 
