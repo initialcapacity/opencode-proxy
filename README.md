@@ -8,24 +8,24 @@ zero-config access to AI models, GitHub tooling, and a shared code-review agent 
 
 1. Install dependencies
 
-    ```shell
-    brew install anomalyco/tap/opencode cloudflared
-    ```
+   ```shell
+   brew install anomalyco/tap/opencode cloudflared
+   ```
 
 2. Authenticate
 
-    ```shell
-    opencode auth login https://opencode.icap.dev
-    ```
+   ```shell
+   opencode auth login https://opencode.icap.dev
+   ```
 
-    This opens your browser for SSO. After authenticating, OpenCode automatically configures itself
-    with providers, models, and the GitHub MCP server — no manual config required.
+   This opens your browser for SSO. After authenticating, OpenCode automatically configures itself
+   with providers, models, and the GitHub MCP server — no manual config required.
 
 3. Run OpenCode
 
-    ```shell
-    opencode
-    ```
+   ```shell
+   opencode
+   ```
 
 ## Reviewing code
 
@@ -56,10 +56,10 @@ the internals.
 
 Two Workers are deployed:
 
-| Worker | Domain | Purpose |
-|--------|--------|---------|
-| `opencode-proxy` | `opencode.icap.dev` | AI model proxy, discovery endpoint, Codex endpoint, agent + command config |
-| `github-mcp` | `github-mcp.icap.dev` | GitHub MCP server |
+| Worker           | Domain                | Purpose                                                                    |
+| ---------------- | --------------------- | -------------------------------------------------------------------------- |
+| `opencode-proxy` | `opencode.icap.dev`   | AI model proxy, discovery endpoint, Codex endpoint, agent + command config |
+| `github-mcp`     | `github-mcp.icap.dev` | GitHub MCP server                                                          |
 
 ### Discovery and authentication
 
@@ -108,12 +108,12 @@ sequenceDiagram
 
 Four providers are available:
 
-| OpenCode provider | Gateway path | SDK |
-|---|---|---|
-| `ic-anthropic` | `anthropic` | `@ai-sdk/anthropic` |
-| `ic-gemini` | `google-ai-studio` | `@ai-sdk/google` |
-| `ic-openai` | `openai` | `@ai-sdk/openai` |
-| `ic-workers-ai` | `compat` | `@ai-sdk/openai-compatible` |
+| OpenCode provider | Gateway path       | SDK                         |
+| ----------------- | ------------------ | --------------------------- |
+| `ic-anthropic`    | `anthropic`        | `@ai-sdk/anthropic`         |
+| `ic-gemini`       | `google-ai-studio` | `@ai-sdk/google`            |
+| `ic-openai`       | `openai`           | `@ai-sdk/openai`            |
+| `ic-workers-ai`   | `compat`           | `@ai-sdk/openai-compatible` |
 
 Models are fetched from [models.dev](https://models.dev) hourly by a cron trigger and cached in
 Workers KV. If discovery sees a provider missing from KV, it refreshes the catalog once on demand
@@ -147,15 +147,15 @@ sequenceDiagram
 
 Available tools:
 
-| Tool | Description |
-|------|-------------|
-| `list_repos` | List repositories in the org, sorted by most recently updated. Paginated — use page and per_page to navigate results. |
-| `search_code` | Search code across repositories in the organization |
-| `get_file_content` | Get the content of a file from a repository |
-| `list_issues` | List issues for a repository |
-| `get_issue` | Get details of a specific issue including comments |
-| `list_pull_requests` | List pull requests for a repository |
-| `get_pull_request` | Get details of a specific pull request including the diff |
+| Tool                 | Description                                                                                                           |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `list_repos`         | List repositories in the org, sorted by most recently updated. Paginated — use page and per_page to navigate results. |
+| `search_code`        | Search code across repositories in the organization                                                                   |
+| `get_file_content`   | Get the content of a file from a repository                                                                           |
+| `list_issues`        | List issues for a repository                                                                                          |
+| `get_issue`          | Get details of a specific issue including comments                                                                    |
+| `list_pull_requests` | List pull requests for a repository                                                                                   |
+| `get_pull_request`   | Get details of a specific pull request including the diff                                                             |
 
 ### IC Codex
 
@@ -202,10 +202,10 @@ as the Codex grows, so does the scope of the review.
 
 Source files:
 
-| Path | Purpose |
-|------|---------|
-| `agents/code-reviewer.md` | Agent frontmatter + system prompt |
-| `commands/review.md` | `/review` slash command template |
+| Path                       | Purpose                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| `agents/code-reviewer.md`  | Agent frontmatter + system prompt                                                      |
+| `commands/review.md`       | `/review` slash command template                                                       |
 | `scripts/build-agents.mjs` | Compiles both into `src/agents.generated.ts`, inlining the Codex into the agent prompt |
 
 The compiled agent and command are served in the `config.agent` and `config.command`
@@ -252,9 +252,16 @@ opencode-proxy/
 ```shell
 npm test                  # run all tests
 npm run typecheck         # typecheck all projects
+npm run format            # format all code with prettier
 npm run dev               # opencode-proxy local dev
 npm run dev:github-mcp    # github-mcp local dev
 npm run build:config      # regenerate codex + agents (runs automatically on pre-hooks)
+```
+
+To test locally with OpenCode, start the local dev server (`npm run dev`) and run:
+
+```shell
+opencode auth login http://localhost:8787
 ```
 
 Editing Codex rules, the agent prompt, or the `/review` command means editing markdown
@@ -268,5 +275,13 @@ The pre-hooks on `npm test`, `npm run typecheck`, `npm run deploy`, and `npm run
 regenerate `src/codex.generated.ts` and `src/agents.generated.ts` automatically, so you
 never need to run the build script by hand.
 
-Deployments are handled by the CI/CD pipeline on push to `main`. Do not run `npm run deploy`
+## Deployment
+
+Deployments are handled by the CI/CD pipeline (`.github/workflows/pipeline.yml`) on push to `main`. Do not run `npm run deploy`
 locally.
+
+The following repository secrets must be set in GitHub for deployments to succeed:
+
+- `CF_TOKEN`: A Cloudflare API token with permission to edit Workers and KV.
+
+Cloudflare Access configuration and AI Gateway keys (`CF_AIG_TOKEN`) are managed directly in the Cloudflare dashboard.

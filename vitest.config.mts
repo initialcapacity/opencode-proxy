@@ -1,19 +1,19 @@
 import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
 
 export default defineWorkersConfig({
-	test: {
-		poolOptions: {
-			workers: {
-				wrangler: { configPath: "./wrangler.jsonc" },
-				miniflare: {
-					bindings: {
-						CF_ACCESS_TEAM_DOMAIN: "test.cloudflareaccess.com",
-						CF_ACCESS_AUD: "test-access-aud",
-						CF_AIG_TOKEN: "test-aig-token",
-					},
-					kvNamespaces: ["MODELS"],
-				},
-			},
-		},
-	},
+  test: {
+    poolOptions: {
+      workers: {
+        wrangler: { configPath: "./wrangler.jsonc" },
+        miniflare: {
+          bindings: {
+            CF_ACCESS_TEAM_DOMAIN: "test.cloudflareaccess.com",
+            CF_ACCESS_AUD: "test-access-aud",
+            CF_AIG_TOKEN: "test-aig-token",
+          },
+          kvNamespaces: ["MODELS"],
+        },
+      },
+    },
+  },
 });

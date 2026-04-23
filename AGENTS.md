@@ -23,6 +23,7 @@ Guidelines for AI coding agents working on this project.
 - Prefer simple, correct solutions. When a tool has a flag for what you need (e.g.,
   `--no-verbose`), use it instead of shell piping hacks.
 - Run tests after every change. Don't commit broken code.
+- Run `npm run typecheck` and `npm run format:check` before committing.
 - Let the CI/CD pipeline handle deployments. Don't run `npm run deploy` or `wrangler deploy` locally.
 - Write concise commit messages focused on what changed and why.
 - Keep the architecture docs and usage docs updated in the README.md

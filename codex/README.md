@@ -26,30 +26,30 @@ and survives refactoring.
 
 ### Frontmatter fields
 
-| Field      | Required | Notes                                                              |
-|------------|----------|--------------------------------------------------------------------|
-| `id`       | yes      | `IC-<CATEGORY>-<NNN>`, zero-padded to three digits                 |
-| `title`    | yes      | Short imperative statement, matches the kt.dev principle           |
-| `category` | yes      | One of `architecture`, `code`, `testing`                           |
-| `severity` | yes      | One of `critical`, `important`, `suggestion`, `nit`                |
-| `source`   | no       | URL for provenance, typically `https://kt.dev`                     |
+| Field      | Required | Notes                                                    |
+| ---------- | -------- | -------------------------------------------------------- |
+| `id`       | yes      | `IC-<CATEGORY>-<NNN>`, zero-padded to three digits       |
+| `title`    | yes      | Short imperative statement, matches the kt.dev principle |
+| `category` | yes      | One of `architecture`, `code`, `testing`                 |
+| `severity` | yes      | One of `critical`, `important`, `suggestion`, `nit`      |
+| `source`   | no       | URL for provenance, typically `https://kt.dev`           |
 
 ### Categories and ID ranges
 
-| Prefix         | Category       | Scope                                                      |
-|----------------|----------------|------------------------------------------------------------|
-| `IC-ARCH-NNN`  | `architecture` | System design, dependencies, service boundaries            |
-| `IC-CODE-NNN`  | `code`         | Language-level practices, naming, organization             |
-| `IC-TEST-NNN`  | `testing`      | Test structure, fakes vs. mocks, real services             |
+| Prefix        | Category       | Scope                                           |
+| ------------- | -------------- | ----------------------------------------------- |
+| `IC-ARCH-NNN` | `architecture` | System design, dependencies, service boundaries |
+| `IC-CODE-NNN` | `code`         | Language-level practices, naming, organization  |
+| `IC-TEST-NNN` | `testing`      | Test structure, fakes vs. mocks, real services  |
 
 ### Severities
 
-| Severity     | Meaning                                                                 |
-|--------------|-------------------------------------------------------------------------|
-| `critical`   | Must fix before merge. Security, correctness, or data-loss concerns.    |
-| `important`  | Strong violation of an IC principle. Fix or explicitly justify.         |
-| `suggestion` | Would improve the change. Author's call.                                |
-| `nit`        | Minor; informational.                                                   |
+| Severity     | Meaning                                                              |
+| ------------ | -------------------------------------------------------------------- |
+| `critical`   | Must fix before merge. Security, correctness, or data-loss concerns. |
+| `important`  | Strong violation of an IC principle. Fix or explicitly justify.      |
+| `suggestion` | Would improve the change. Author's call.                             |
+| `nit`        | Minor; informational.                                                |
 
 ## Adding or editing a rule
 
