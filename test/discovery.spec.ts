@@ -12,7 +12,7 @@ describe('buildDiscoveryPayload', () => {
 
 	it('restricts to custom-named providers', () => {
 		const payload = buildDiscoveryPayload(origin);
-		expect(payload.config.enabled_providers).toEqual(['ic-anthropic', 'ic-openai', 'ic-workers-ai']);
+		expect(payload.config.enabled_providers).toEqual(['ic-anthropic', 'ic-gemini', 'ic-openai', 'ic-workers-ai']);
 	});
 
 	it('configures ic-anthropic with npm package and proxy base URL', () => {
@@ -33,6 +33,18 @@ describe('buildDiscoveryPayload', () => {
 		expect((provider.options as Record<string, string>).baseURL).toBe(`${origin}/v1/openai`);
 	});
 
+	it('configures ic-gemini with npm package, proxy base URL, and CF Access apiKey', () => {
+		const payload = buildDiscoveryPayload(origin);
+		const provider = payload.config.provider['ic-gemini'] as Record<string, unknown>;
+		expect(provider.npm).toBe('@ai-sdk/google');
+		expect(provider.name).toBe('IC Gemini');
+		expect(provider.env).toEqual(['CF_ACCESS_TOKEN']);
+		expect(provider.options).toEqual({
+			baseURL: `${origin}/v1/google-ai-studio/v1beta`,
+			apiKey: '{env:CF_ACCESS_TOKEN}',
+		});
+	});
+
 	it('configures ic-workers-ai with openai-compatible npm package and proxy base URL', () => {
 		const payload = buildDiscoveryPayload(origin);
 		const provider = payload.config.provider['ic-workers-ai'] as Record<string, unknown>;
@@ -51,12 +63,15 @@ describe('buildDiscoveryPayload', () => {
 	it('includes models when provided', () => {
 		const models = {
 			anthropic: { 'claude-sonnet-4-5': { name: 'Claude Sonnet 4.5' } },
+			'google-ai-studio': { 'gemini-2.5-flash': { name: 'Gemini 2.5 Flash' } },
 			openai: { 'gpt-4o': { name: 'GPT-4o' } },
 		};
 		const payload = buildDiscoveryPayload(origin, models);
 		const anthropic = payload.config.provider['ic-anthropic'] as Record<string, unknown>;
+		const gemini = payload.config.provider['ic-gemini'] as Record<string, unknown>;
 		const openai = payload.config.provider['ic-openai'] as Record<string, unknown>;
 		expect(anthropic.models).toEqual(models.anthropic);
+		expect(gemini.models).toEqual(models['google-ai-studio']);
 		expect(openai.models).toEqual(models.openai);
 	});
 

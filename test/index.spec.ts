@@ -23,11 +23,16 @@ describe('integration', () => {
 			'https://opencode.icap.dev',
 		]);
 		expect(body.auth.env).toBe('CF_ACCESS_TOKEN');
-		expect(body.config.enabled_providers).toEqual(['ic-anthropic', 'ic-openai', 'ic-workers-ai']);
+		expect(body.config.enabled_providers).toEqual(['ic-anthropic', 'ic-gemini', 'ic-openai', 'ic-workers-ai']);
 		expect(body.config.provider['ic-anthropic'].npm).toBe('@ai-sdk/anthropic');
 		expect(body.config.provider['ic-anthropic'].options.baseURL).toBe(
 			'https://opencode.icap.dev/v1/anthropic',
 		);
+		expect(body.config.provider['ic-gemini'].npm).toBe('@ai-sdk/google');
+		expect(body.config.provider['ic-gemini'].options).toEqual({
+			baseURL: 'https://opencode.icap.dev/v1/google-ai-studio/v1beta',
+			apiKey: '{env:CF_ACCESS_TOKEN}',
+		});
 		expect(body.config.provider['ic-openai'].npm).toBe('@ai-sdk/openai');
 		expect(body.config.provider['ic-openai'].options.baseURL).toBe(
 			'https://opencode.icap.dev/v1/openai',
@@ -48,13 +53,17 @@ describe('integration', () => {
 	it('includes models from KV in discovery config', async () => {
 		const models = { 'claude-sonnet-4-5': { name: 'Claude Sonnet 4.5' } };
 		await env.MODELS.put('models:anthropic', JSON.stringify(models));
+		const geminiModels = { 'gemini-2.5-flash': { name: 'Gemini 2.5 Flash' } };
+		await env.MODELS.put('models:google-ai-studio', JSON.stringify(geminiModels));
 
 		const response = await SELF.fetch('https://opencode.icap.dev/.well-known/opencode');
 		const body = (await response.json()) as any;
 
 		expect(body.config.provider['ic-anthropic'].models).toEqual(models);
+		expect(body.config.provider['ic-gemini'].models).toEqual(geminiModels);
 
 		await env.MODELS.delete('models:anthropic');
+		await env.MODELS.delete('models:google-ai-studio');
 	});
 
 	it('rejects proxy requests without authorization', async () => {
@@ -127,7 +136,7 @@ describe('integration', () => {
 		expect(await response.json()).toEqual({ error: 'Unknown provider' });
 	});
 
-	it('proxies an authenticated request through the AI gateway', async () => {
+	it('proxies authenticated Anthropic and Google AI Studio requests through the AI gateway', async () => {
 		const { publicJWK, privateKey } = await generateKeyPair();
 		const token = await signJWT(
 			{
@@ -149,24 +158,33 @@ describe('integration', () => {
 
 		fetchMock
 			.get('https://gateway.ai.cloudflare.com')
-			.intercept({
-				path: `/v1/${env.CF_ACCOUNT_ID}/${env.CF_GATEWAY_NAME}/anthropic/v1/messages`,
-				method: 'POST',
-				body: '{"model":"claude"}',
-				headers: {
-					'cf-aig-authorization': `Bearer ${env.CF_AIG_TOKEN}`,
-					'cf-aig-metadata': '{"userId":"user@example.com"}',
-				},
-			})
-			.reply(200, { content: 'hello' }, { headers: { 'content-type': 'application/json' } });
+			.intercept({ method: 'POST', path: /\/v1\/.+/ })
+			.reply(200, { ok: true }, { headers: { 'content-type': 'application/json' } });
 
-		const response = await SELF.fetch('https://opencode.icap.dev/v1/anthropic/v1/messages', {
+		fetchMock
+			.get('https://gateway.ai.cloudflare.com')
+			.intercept({ method: 'POST', path: /\/v1\/.+/ })
+			.reply(200, { ok: true }, { headers: { 'content-type': 'application/json' } });
+
+		const anthropicResponse = await SELF.fetch('https://opencode.icap.dev/v1/anthropic/v1/messages', {
 			method: 'POST',
 			headers: { 'x-api-key': token, 'content-type': 'application/json' },
 			body: '{"model":"claude"}',
 		});
 
-		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ content: 'hello' });
+		expect(anthropicResponse.status).toBe(200);
+		expect(await anthropicResponse.json()).toEqual({ ok: true });
+
+		const googleResponse = await SELF.fetch(
+			'https://opencode.icap.dev/v1/google-ai-studio/v1beta/models/gemini-2.5-flash:generateContent',
+			{
+				method: 'POST',
+				headers: { 'x-goog-api-key': token, 'content-type': 'application/json' },
+				body: '{"contents":[{"parts":[{"text":"Hello"}]}]}',
+			},
+		);
+
+		expect(googleResponse.status).toBe(200);
+		expect(await googleResponse.json()).toEqual({ ok: true });
 	});
 });

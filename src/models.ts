@@ -15,6 +15,7 @@ const MODELS_DEV_CONFIG: Record<GatewayProvider, ModelsDevConfig> = {
 	anthropic: { key: 'anthropic' },
 	openai: { key: 'openai' },
 	compat: { key: 'cloudflare-workers-ai', transformId: (id) => `workers-ai/${id}` },
+	'google-ai-studio': { key: 'google' },
 };
 
 function transformModelIds(

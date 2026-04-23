@@ -55,6 +55,7 @@ describe('GatewayProxy', () => {
 			const original = new Headers({
 				'authorization': 'Bearer jwt-token',
 				'x-api-key': 'some-key',
+				'x-goog-api-key': 'google-token',
 				'host': 'opencode.icap.dev',
 				'content-type': 'application/json',
 			});
@@ -63,6 +64,7 @@ describe('GatewayProxy', () => {
 
 			expect(headers.get('authorization')).toBeNull();
 			expect(headers.get('x-api-key')).toBeNull();
+			expect(headers.get('x-goog-api-key')).toBeNull();
 			expect(headers.get('host')).toBeNull();
 			expect(headers.get('content-type')).toBe('application/json');
 		});
@@ -148,6 +150,26 @@ describe('GatewayProxy', () => {
 			expect(captured[0].url).toBe(
 				`https://gateway.ai.cloudflare.com/v1/${ACCOUNT_ID}/${GATEWAY_NAME}/openai/chat/completions?stream=true`,
 			);
+		});
+
+		it('preserves google ai studio paths with v1beta model endpoints', async () => {
+			const { fetchFn, captured } = captureFetch(new Response('ok'));
+			const proxy = new GatewayProxy(ACCOUNT_ID, GATEWAY_NAME, AIG_TOKEN, fetchFn);
+			const request = new Request(
+				'https://proxy.example/v1/google-ai-studio/v1beta/models/gemini-2.5-flash:generateContent',
+				{
+					method: 'POST',
+					headers: { 'x-goog-api-key': 'client-token', 'content-type': 'application/json' },
+					body: '{"contents":[]}',
+				},
+			);
+
+			await proxy.proxy(request, 'google-ai-studio', 'user@example.com');
+
+			expect(captured[0].url).toBe(
+				`https://gateway.ai.cloudflare.com/v1/${ACCOUNT_ID}/${GATEWAY_NAME}/google-ai-studio/v1beta/models/gemini-2.5-flash:generateContent`,
+			);
+			expect(captured[0].headers.get('x-goog-api-key')).toBeNull();
 		});
 
 		it('propagates network errors from the gateway', async () => {

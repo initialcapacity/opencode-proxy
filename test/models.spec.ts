@@ -38,6 +38,18 @@ const modelsDevResponse = {
 			},
 		},
 	},
+	google: {
+		id: 'google',
+		npm: '@ai-sdk/google',
+		name: 'Google AI Studio',
+		models: {
+			'gemini-2.5-flash': {
+				id: 'gemini-2.5-flash',
+				name: 'Gemini 2.5 Flash',
+				limit: { context: 1048576, output: 65536 },
+			},
+		},
+	},
 	groq: {
 		id: 'groq',
 		npm: '@ai-sdk/groq',
@@ -53,6 +65,7 @@ function fakeFetch(status: number, body: unknown): FetchFn {
 describe('ModelCatalog', () => {
 	beforeEach(async () => {
 		await env.MODELS.delete('models:anthropic');
+		await env.MODELS.delete('models:google-ai-studio');
 		await env.MODELS.delete('models:openai');
 		await env.MODELS.delete('models:compat');
 	});
@@ -64,9 +77,11 @@ describe('ModelCatalog', () => {
 			await catalog.refresh();
 
 			const anthropicRaw = await env.MODELS.get('models:anthropic');
+			const googleRaw = await env.MODELS.get('models:google-ai-studio');
 			const openaiRaw = await env.MODELS.get('models:openai');
 			const compatRaw = await env.MODELS.get('models:compat');
 			expect(JSON.parse(anthropicRaw!)).toEqual(modelsDevResponse.anthropic.models);
+			expect(JSON.parse(googleRaw!)).toEqual(modelsDevResponse.google.models);
 			expect(JSON.parse(openaiRaw!)).toEqual(modelsDevResponse.openai.models);
 			expect(JSON.parse(compatRaw!)).toEqual({
 				'workers-ai/@cf/meta/llama-3.1-8b-instruct': {
@@ -107,6 +122,7 @@ describe('ModelCatalog', () => {
 						},
 					},
 				},
+				google: modelsDevResponse.google,
 				openai: modelsDevResponse.openai,
 				'cloudflare-workers-ai': modelsDevResponse['cloudflare-workers-ai'],
 			};
@@ -121,6 +137,7 @@ describe('ModelCatalog', () => {
 
 		it('keeps the last successful catalog when a provider is missing from the response', async () => {
 			await env.MODELS.put('models:anthropic', JSON.stringify(modelsDevResponse.anthropic.models));
+			await env.MODELS.put('models:google-ai-studio', JSON.stringify(modelsDevResponse.google.models));
 			await env.MODELS.put('models:openai', JSON.stringify(modelsDevResponse.openai.models));
 			const partial = { anthropic: modelsDevResponse.anthropic };
 			const catalog = new ModelCatalog(env.MODELS, fakeFetch(200, partial));
@@ -128,8 +145,10 @@ describe('ModelCatalog', () => {
 			await expect(catalog.refresh()).rejects.toThrow('models.dev response missing provider openai');
 
 			const anthropicRaw = await env.MODELS.get('models:anthropic');
+			const googleRaw = await env.MODELS.get('models:google-ai-studio');
 			const openaiRaw = await env.MODELS.get('models:openai');
 			expect(JSON.parse(anthropicRaw!)).toEqual(modelsDevResponse.anthropic.models);
+			expect(JSON.parse(googleRaw!)).toEqual(modelsDevResponse.google.models);
 			expect(JSON.parse(openaiRaw!)).toEqual(modelsDevResponse.openai.models);
 		});
 	});

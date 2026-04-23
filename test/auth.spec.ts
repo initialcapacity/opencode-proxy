@@ -52,11 +52,23 @@ describe('extractToken', () => {
 		expect(extractToken(req)).toBe('my-token');
 	});
 
+	it('extracts from x-goog-api-key header', () => {
+		const req = new Request('http://localhost', { headers: { 'x-goog-api-key': 'my-google-token' } });
+		expect(extractToken(req)).toBe('my-google-token');
+	});
+
 	it('prefers x-api-key over Authorization', () => {
 		const req = new Request('http://localhost', {
 			headers: { 'x-api-key': 'key-token', authorization: 'Bearer bearer-token' },
 		});
 		expect(extractToken(req)).toBe('key-token');
+	});
+
+	it('prefers x-goog-api-key over Authorization', () => {
+		const req = new Request('http://localhost', {
+			headers: { 'x-goog-api-key': 'google-token', authorization: 'Bearer bearer-token' },
+		});
+		expect(extractToken(req)).toBe('google-token');
 	});
 
 	it('returns undefined when no auth headers are present', () => {
@@ -109,6 +121,19 @@ describe('auth middleware', () => {
 
 		const res = await app.fetch(
 			new Request('http://localhost/test', { headers: { Authorization: `Bearer ${token}` } }),
+			env,
+		);
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ email: 'user@example.com' });
+	});
+
+	it('passes with a valid x-goog-api-key token', async () => {
+		const { app, env, privateKey, kid } = await createTestApp();
+		const token = await validToken(privateKey, kid);
+
+		const res = await app.fetch(
+			new Request('http://localhost/test', { headers: { 'x-goog-api-key': token } }),
 			env,
 		);
 

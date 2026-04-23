@@ -39,6 +39,7 @@ export class GatewayProxy {
 		const headers = new Headers(original);
 		headers.delete('authorization');
 		headers.delete('x-api-key');
+		headers.delete('x-goog-api-key');
 		headers.delete('host');
 		headers.delete('content-length');
 		headers.delete('transfer-encoding');

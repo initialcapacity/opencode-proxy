@@ -23,10 +23,13 @@ export async function authenticate(request: Request, verifier: JwtVerifier): Pro
 	}
 }
 
-// Anthropic SDK sends x-api-key, OpenAI SDK sends Authorization: Bearer
+// Anthropic SDK sends x-api-key, Google SDK sends x-goog-api-key, OpenAI SDK sends Authorization: Bearer
 export function extractToken(request: Request): string | undefined {
 	const apiKey = request.headers.get('x-api-key');
 	if (apiKey) return apiKey;
+
+	const googleApiKey = request.headers.get('x-goog-api-key');
+	if (googleApiKey) return googleApiKey;
 
 	const auth = request.headers.get('authorization');
 	if (auth?.toLowerCase().startsWith('bearer ')) {

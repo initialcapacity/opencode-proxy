@@ -20,6 +20,9 @@ describe('scheduled handler', () => {
 				anthropic: {
 					models: { 'claude-sonnet-4-5': { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' } },
 				},
+				google: {
+					models: { 'gemini-2.5-flash': { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' } },
+				},
 				openai: {
 					models: { 'gpt-4o': { id: 'gpt-4o', name: 'GPT-4o' } },
 				},

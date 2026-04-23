@@ -104,11 +104,12 @@ sequenceDiagram
     Proxy-->>OC: Response
 ```
 
-Three providers are available:
+Four providers are available:
 
 | OpenCode provider | Gateway path | SDK |
 |---|---|---|
 | `ic-anthropic` | `anthropic` | `@ai-sdk/anthropic` |
+| `ic-gemini` | `google-ai-studio` | `@ai-sdk/google` |
 | `ic-openai` | `openai` | `@ai-sdk/openai` |
 | `ic-workers-ai` | `compat` | `@ai-sdk/openai-compatible` |
 
