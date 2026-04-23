@@ -29,6 +29,16 @@ let authMiddleware: MiddlewareHandler<App> | undefined;
 let gatewayProxy: GatewayProxy | undefined;
 let modelCatalog: ModelCatalog | undefined;
 
+async function loadModelsByGateway(catalog: ModelCatalog): Promise<Record<string, Record<string, Record<string, unknown>>>> {
+	const modelsByGateway: Record<string, Record<string, Record<string, unknown>>> = {};
+	await Promise.all(
+		GATEWAY_PROVIDERS.map(async (provider) => {
+			modelsByGateway[provider] = await catalog.getModels(provider);
+		}),
+	);
+	return modelsByGateway;
+}
+
 function getAuthMiddleware(env: Bindings): MiddlewareHandler<App> {
 	if (!authMiddleware) {
 		authMiddleware = createAuthMiddleware<App>(new JwtVerifier(env.CF_ACCESS_TEAM_DOMAIN, env.CF_ACCESS_AUD));
@@ -60,13 +70,22 @@ app.onError((err, c) => {
 app.get('/.well-known/opencode', async (c) => {
 	const origin = new URL(c.req.url).origin;
 	const catalog = getModelCatalog(c.env);
-	const modelsByGateway: Record<string, Record<string, Record<string, unknown>>> = {};
+	let modelsByGateway = await loadModelsByGateway(catalog);
 
-	await Promise.all(
-		GATEWAY_PROVIDERS.map(async (provider) => {
-			modelsByGateway[provider] = await catalog.getModels(provider);
-		}),
-	);
+	if (GATEWAY_PROVIDERS.some((provider) => Object.keys(modelsByGateway[provider]).length === 0)) {
+		try {
+			await catalog.refresh();
+			modelsByGateway = await loadModelsByGateway(catalog);
+		} catch (error) {
+			console.error(
+				JSON.stringify({
+					error: error instanceof Error ? error.message : 'Model refresh failed',
+					path: c.req.path,
+					event: 'model_refresh_failed',
+				}),
+			);
+		}
+	}
 
 	return c.json(buildDiscoveryPayload(origin, modelsByGateway, c.env.GITHUB_MCP_HOST));
 });
