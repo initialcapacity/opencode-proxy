@@ -14,6 +14,7 @@ type Bindings = {
 	CF_ACCOUNT_ID: string;
 	CF_GATEWAY_NAME: string;
 	CF_AIG_TOKEN: string;
+	GITHUB_MCP_HOST: string;
 	MODELS: KVNamespace;
 };
 
@@ -67,7 +68,7 @@ app.get('/.well-known/opencode', async (c) => {
 		}),
 	);
 
-	return c.json(buildDiscoveryPayload(origin, modelsByGateway));
+	return c.json(buildDiscoveryPayload(origin, modelsByGateway, c.env.GITHUB_MCP_HOST));
 });
 
 app.get('/.well-known/codex', (c) => c.json(new CodexCatalog().payload()));

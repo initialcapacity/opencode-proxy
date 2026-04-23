@@ -72,7 +72,7 @@ Use these consistently:
   call.
 - `nit` — minor and informational. Do not fill a review with these.
 
-A rule's `severity_default` from the Codex is the starting point; you may
+A rule's `severity` from the Codex is the starting point; you may
 downgrade when the violation is minor or upgrade when the context makes it
 worse (for example, an `avoid mocks` violation inside a security-critical
 auth test is more than a suggestion).

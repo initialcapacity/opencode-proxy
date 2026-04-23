@@ -72,6 +72,16 @@ describe('buildDiscoveryPayload', () => {
 		});
 	});
 
+	it('uses the configured github mcp host', () => {
+		const payload = buildDiscoveryPayload(origin, {}, 'github-mcp.example.com');
+		expect(payload.config.mcp.github).toEqual({
+			type: 'remote',
+			url: 'https://github-mcp.example.com/mcp',
+			headers: { 'x-api-key': '{env:CF_ACCESS_TOKEN}' },
+			enabled: true,
+		});
+	});
+
 	it('includes the code-reviewer agent and /review command', () => {
 		const payload = buildDiscoveryPayload(origin);
 		const agent = payload.config.agent['code-reviewer'] as Record<string, unknown>;

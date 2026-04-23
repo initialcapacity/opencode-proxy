@@ -58,16 +58,20 @@ export class ModelCatalog {
 		}
 
 		const catalog = (await response.json()) as Record<string, ModelsDevProvider>;
+		const nextModelsByProvider: Partial<Record<GatewayProvider, Record<string, Record<string, unknown>>>> = {};
+
+		for (const provider of GATEWAY_PROVIDERS) {
+			const config = MODELS_DEV_CONFIG[provider];
+			const entry = catalog[config.key];
+			if (!entry?.models) throw new Error(`models.dev response missing provider ${config.key}`);
+			const sanitized = sanitizeModels(entry.models);
+			nextModelsByProvider[provider] = config.transformId ? transformModelIds(sanitized, config.transformId) : sanitized;
+		}
 
 		await Promise.all(
-			GATEWAY_PROVIDERS.map((provider) => {
-				const config = MODELS_DEV_CONFIG[provider];
-				const entry = catalog[config.key];
-				if (!entry?.models) return Promise.resolve();
-				const sanitized = sanitizeModels(entry.models);
-				const models = config.transformId ? transformModelIds(sanitized, config.transformId) : sanitized;
-				return this.kv.put(`models:${provider}`, JSON.stringify(models));
-			}),
+			GATEWAY_PROVIDERS.map((provider) =>
+				this.kv.put(`models:${provider}`, JSON.stringify(nextModelsByProvider[provider]!)),
+			),
 		);
 	}
 

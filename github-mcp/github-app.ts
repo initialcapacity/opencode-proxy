@@ -47,6 +47,7 @@ async function signAppJwt(appId: string, privateKeyPem: string, now: number): Pr
 export class GitHubAppAuth {
 	private cachedToken: string | undefined;
 	private cachedTokenExpiry = 0;
+	private cachedTokenPromise: Promise<string> | undefined;
 
 	constructor(
 		private readonly appId: string,
@@ -61,7 +62,23 @@ export class GitHubAppAuth {
 		if (this.cachedToken && now < this.cachedTokenExpiry) {
 			return this.cachedToken;
 		}
+		if (this.cachedTokenPromise) {
+			return this.cachedTokenPromise;
+		}
 
+		const refreshPromise = this.fetchInstallationToken(now);
+		this.cachedTokenPromise = refreshPromise;
+
+		try {
+			return await refreshPromise;
+		} finally {
+			if (this.cachedTokenPromise === refreshPromise) {
+				this.cachedTokenPromise = undefined;
+			}
+		}
+	}
+
+	private async fetchInstallationToken(now: number): Promise<string> {
 		const appJwt = await signAppJwt(this.appId, this.privateKey, now);
 
 		const response = await this.fetchFn(

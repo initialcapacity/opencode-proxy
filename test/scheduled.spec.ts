@@ -20,6 +20,17 @@ describe('scheduled handler', () => {
 				anthropic: {
 					models: { 'claude-sonnet-4-5': { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' } },
 				},
+				openai: {
+					models: { 'gpt-4o': { id: 'gpt-4o', name: 'GPT-4o' } },
+				},
+				'cloudflare-workers-ai': {
+					models: {
+						'@cf/meta/llama-3.1-8b-instruct': {
+							id: '@cf/meta/llama-3.1-8b-instruct',
+							name: 'Llama 3.1 8B Instruct',
+						},
+					},
+				},
 			});
 
 		await worker.scheduled(

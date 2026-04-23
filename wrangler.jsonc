@@ -20,7 +20,8 @@
 	"vars": {
 		"CF_ACCESS_TEAM_DOMAIN": "initialcapacity.cloudflareaccess.com",
 		"CF_ACCOUNT_ID": "8a4e4c15971c03154164931e43651ae4",
-		"CF_GATEWAY_NAME": "ai-gateway"
+		"CF_GATEWAY_NAME": "ai-gateway",
+		"GITHUB_MCP_HOST": "github-mcp.icap.dev"
 	},
 	"kv_namespaces": [
 		{

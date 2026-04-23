@@ -23,6 +23,14 @@ async function validPayload(overrides?: Record<string, unknown>) {
 	};
 }
 
+function deferred<T>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	const promise = new Promise<T>((res) => {
+		resolve = res;
+	});
+	return { promise, resolve };
+}
+
 describe('JwtVerifier', () => {
 	it('verifies a valid token', async () => {
 		const { verifier, privateKey, kid } = await createVerifier();
@@ -127,6 +135,53 @@ describe('JwtVerifier', () => {
 
 		await expect(verifier.verify(token)).rejects.toThrow('network down');
 		await verifier.verify(token);
+
+		expect(fetchCount).toBe(2);
+	});
+
+	it('refetches keys when a cached keyset does not contain the token kid', async () => {
+		const firstPair = await generateKeyPair();
+		const rotatedJwk = { ...firstPair.publicJWK, kid: 'test-key-2' };
+		let fetchCount = 0;
+		const fetchKeys = async () => {
+			fetchCount++;
+			return fetchCount === 1 ? [firstPair.publicJWK as any] : [rotatedJwk as any];
+		};
+		let clock = 1_000_000;
+		const verifier = new JwtVerifier(TEAM_DOMAIN, AUD, fetchKeys, () => clock);
+		const firstToken = await signJWT(await validPayload(), firstPair.privateKey, firstPair.publicJWK.kid);
+		const rotatedToken = await signJWT(await validPayload(), firstPair.privateKey, rotatedJwk.kid);
+
+		await verifier.verify(firstToken);
+		clock += 1_000;
+		const payload = await verifier.verify(rotatedToken);
+
+		expect(payload.email).toBe('user@example.com');
+		expect(fetchCount).toBe(2);
+	});
+
+	it('coalesces concurrent forced refreshes when a rotated kid misses the cached keyset', async () => {
+		const firstPair = await generateKeyPair();
+		const rotatedJwk = { ...firstPair.publicJWK, kid: 'test-key-2' };
+		let fetchCount = 0;
+		const releaseRefresh = deferred<void>();
+		const fetchKeys = async () => {
+			fetchCount++;
+			if (fetchCount === 1) return [firstPair.publicJWK as any];
+			await releaseRefresh.promise;
+			return [rotatedJwk as any];
+		};
+		let clock = 1_000_000;
+		const verifier = new JwtVerifier(TEAM_DOMAIN, AUD, fetchKeys, () => clock);
+		const firstToken = await signJWT(await validPayload(), firstPair.privateKey, firstPair.publicJWK.kid);
+		const rotatedToken = await signJWT(await validPayload(), firstPair.privateKey, rotatedJwk.kid);
+
+		await verifier.verify(firstToken);
+		clock += 1_000;
+		const firstRefresh = verifier.verify(rotatedToken);
+		const secondRefresh = verifier.verify(rotatedToken);
+		releaseRefresh.resolve();
+		await Promise.all([firstRefresh, secondRefresh]);
 
 		expect(fetchCount).toBe(2);
 	});

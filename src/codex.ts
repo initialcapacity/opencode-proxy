@@ -9,10 +9,6 @@ export class CodexCatalog {
 		return this.rules;
 	}
 
-	get(id: string): CodexRule | undefined {
-		return this.rules.find((rule) => rule.id === id);
-	}
-
 	payload() {
 		return {
 			version: 1,

@@ -26,7 +26,11 @@ type Models = Record<string, Record<string, unknown>>;
 
 export const GITHUB_MCP_HOST = 'github-mcp.icap.dev';
 
-export function buildDiscoveryPayload(origin: string, modelsByGateway: Record<string, Models> = {}) {
+export function buildDiscoveryPayload(
+	origin: string,
+	modelsByGateway: Record<string, Models> = {},
+	githubMcpHost = GITHUB_MCP_HOST,
+) {
 	const provider: Record<string, unknown> = {};
 
 	for (const [name, config] of Object.entries(PROVIDER_CONFIG)) {
@@ -51,7 +55,7 @@ export function buildDiscoveryPayload(origin: string, modelsByGateway: Record<st
 			mcp: {
 				github: {
 					type: 'remote',
-					url: `https://${GITHUB_MCP_HOST}/mcp`,
+					url: `https://${githubMcpHost}/mcp`,
 					headers: {
 						'x-api-key': '{env:CF_ACCESS_TOKEN}',
 					},

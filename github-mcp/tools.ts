@@ -20,10 +20,19 @@ function textResult(text: string) {
 	return { content: [{ type: 'text' as const, text }] };
 }
 
-async function jsonResult(response: Response) {
+function buildErrorMessage(response: Response, body: string, context?: string): string {
+	const scope = context ? ` while fetching ${context}` : '';
+	return `GitHub API error ${response.status}${scope}: ${body}`;
+}
+
+async function errorResult(response: Response, context?: string) {
+	const body = await response.text();
+	return textResult(buildErrorMessage(response, body, context));
+}
+
+async function jsonResult(response: Response, context?: string) {
 	if (!response.ok) {
-		const body = await response.text();
-		return textResult(`GitHub API error ${response.status}: ${body}`);
+		return errorResult(response, context);
 	}
 	return textResult(JSON.stringify(await response.json(), null, 2));
 }
@@ -88,9 +97,23 @@ export const toolDefs = {
 				gh(`/repos/${org}/${repo}/issues/${issue_number}`),
 				gh(`/repos/${org}/${repo}/issues/${issue_number}/comments`),
 			]);
-			if (!issue.ok) return jsonResult(issue);
+			if (!issue.ok) return jsonResult(issue, `issue #${issue_number}`);
 			const issueData = (await issue.json()) as Record<string, unknown>;
-			const commentsData = comments.ok ? await comments.json() : [];
+			if (!comments.ok) {
+				const body = await comments.text();
+				return textResult(
+					JSON.stringify(
+						{
+							...issueData,
+							comments: [],
+							comments_error: buildErrorMessage(comments, body, `comments for issue #${issue_number}`),
+						},
+						null,
+						2,
+					),
+				);
+			}
+			const commentsData = await comments.json();
 			return textResult(JSON.stringify({ ...issueData, comments: commentsData }, null, 2));
 		},
 
@@ -111,9 +134,23 @@ export const toolDefs = {
 					headers: { accept: 'application/vnd.github.v3.diff' },
 				}),
 			]);
-			if (!pr.ok) return jsonResult(pr);
+			if (!pr.ok) return jsonResult(pr, `pull request #${pull_number}`);
 			const prData = (await pr.json()) as Record<string, unknown>;
-			const diffText = diff.ok ? await diff.text() : 'Could not fetch diff';
+			if (!diff.ok) {
+				const body = await diff.text();
+				return textResult(
+					JSON.stringify(
+						{
+							...prData,
+							diff: '',
+							diff_error: buildErrorMessage(diff, body, `pull request #${pull_number} diff`),
+						},
+						null,
+						2,
+					),
+				);
+			}
+			const diffText = await diff.text();
 			return textResult(JSON.stringify({ ...prData, diff: diffText }, null, 2));
 		},
 };

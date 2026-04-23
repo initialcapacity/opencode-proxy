@@ -23,6 +23,7 @@ const KEY_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 export class JwtVerifier {
 	private cachedKeysPromise: Promise<JWK[]> | undefined;
 	private cachedAt = 0;
+	private refreshKeysPromise: Promise<JWK[]> | undefined;
 
 	constructor(
 		private readonly teamDomain: string,
@@ -60,8 +61,12 @@ export class JwtVerifier {
 			throw new Error('Token not yet valid');
 		}
 
-		const keys = await this.getKeys();
-		const jwk = keys.find((k) => k.kid === header.kid);
+		const { keys, fromCache } = await this.getKeys();
+		let jwk = keys.find((k) => k.kid === header.kid);
+		if (!jwk && fromCache) {
+			const refreshedKeys = await this.getKeys(true);
+			jwk = refreshedKeys.keys.find((key) => key.kid === header.kid);
+		}
 		if (!jwk) throw new Error('No matching key found');
 		if (jwk.kty !== 'RSA' || (jwk.alg !== undefined && jwk.alg !== 'RS256')) {
 			throw new Error('Unsupported JWK type');
@@ -83,22 +88,37 @@ export class JwtVerifier {
 		return payload;
 	}
 
-	private async getKeys(): Promise<JWK[]> {
-		if (this.cachedKeysPromise && this.now() - this.cachedAt < KEY_CACHE_TTL_MS) {
-			return this.cachedKeysPromise;
+	private async getKeys(forceRefresh = false): Promise<{ keys: JWK[]; fromCache: boolean }> {
+		if (!forceRefresh && this.cachedKeysPromise && this.now() - this.cachedAt < KEY_CACHE_TTL_MS) {
+			return { keys: await this.cachedKeysPromise, fromCache: true };
+		}
+		if (forceRefresh && this.refreshKeysPromise) {
+			return { keys: await this.refreshKeysPromise, fromCache: false };
 		}
 		// Assign cachedAt optimistically so concurrent callers coalesce onto this in-flight fetch.
 		// After the fetch resolves, overwrite cachedAt with the completion time so TTL reflects
 		// how long the cached keys are actually valid (not how long ago the fetch started).
-		this.cachedAt = this.now();
-		this.cachedKeysPromise = this.fetchKeys(this.teamDomain);
-		try {
-			const keys = await this.cachedKeysPromise;
+		const fetchPromise = this.fetchKeys(this.teamDomain);
+		if (forceRefresh) {
+			this.refreshKeysPromise = fetchPromise;
+		} else {
 			this.cachedAt = this.now();
-			return keys;
+			this.cachedKeysPromise = fetchPromise;
+		}
+		try {
+			const keys = await fetchPromise;
+			this.cachedAt = this.now();
+			this.cachedKeysPromise = Promise.resolve(keys);
+			return { keys, fromCache: false };
 		} catch (e) {
-			this.cachedKeysPromise = undefined;
+			if (!forceRefresh) {
+				this.cachedKeysPromise = undefined;
+			}
 			throw e;
+		} finally {
+			if (forceRefresh && this.refreshKeysPromise === fetchPromise) {
+				this.refreshKeysPromise = undefined;
+			}
 		}
 	}
 

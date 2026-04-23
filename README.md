@@ -157,7 +157,7 @@ Available tools:
 The IC Codex is the machine-readable form of [kt.dev](https://kt.dev) — Initial Capacity's
 opinionated engineering principles — split into ~40 rules with stable IDs. Each rule lives
 in its own markdown file under `codex/rules/` with frontmatter declaring its `id`,
-`category` (`architecture`, `code`, `testing`), and `severity_default`. The full corpus is
+`category` (`architecture`, `code`, `testing`), and `severity`. The full corpus is
 published at `https://opencode.icap.dev/.well-known/codex` as JSON.
 
 ```
@@ -220,7 +220,7 @@ opencode-proxy/
 │   ├── jwt.ts                  # Cloudflare Access JWT verification
 │   ├── logging.ts              # Request logging middleware
 │   ├── codex.ts                # IC Codex catalog (DI wrapper)
-│   ├── agents.ts               # Compiled agents + commands (DI wrapper)
+│   ├── agents.generated.ts     # Compiled agents + commands
 │   └── landing.ts              # HTML landing page
 ├── codex/                      # IC Codex source
 │   ├── README.md               # Rule authoring format

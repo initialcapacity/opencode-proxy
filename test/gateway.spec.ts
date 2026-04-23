@@ -121,6 +121,23 @@ describe('GatewayProxy', () => {
 			expect(captured[0].body).toBe('{"model":"claude"}');
 		});
 
+		it('forwards the request abort signal to the gateway fetch', async () => {
+			let capturedSignal: AbortSignal | null = null;
+			const fetchFn: FetchFn = async (_input, init) => {
+				capturedSignal = init?.signal ?? null;
+				return new Response('ok');
+			};
+			const proxy = new GatewayProxy(ACCOUNT_ID, GATEWAY_NAME, AIG_TOKEN, fetchFn);
+			const controller = new AbortController();
+			const request = new Request('https://proxy.example/v1/openai/chat/completions', {
+				signal: controller.signal,
+			});
+
+			await proxy.proxy(request, 'openai', 'user@example.com');
+
+			expect(capturedSignal).toBe(request.signal);
+		});
+
 		it('preserves query strings', async () => {
 			const { fetchFn, captured } = captureFetch(new Response('ok'));
 			const proxy = new GatewayProxy(ACCOUNT_ID, GATEWAY_NAME, AIG_TOKEN, fetchFn);

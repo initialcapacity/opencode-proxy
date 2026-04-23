@@ -22,6 +22,7 @@ export class GatewayProxy {
 			method: request.method,
 			headers,
 			body: request.body,
+			signal: request.signal,
 		});
 
 		return new Response(resp.body, {

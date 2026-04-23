@@ -25,16 +25,6 @@ describe('CodexCatalog', () => {
 		expect(catalog.all()).toEqual(sampleRules);
 	});
 
-	it('looks up a rule by id', () => {
-		const catalog = new CodexCatalog(sampleRules);
-		expect(catalog.get('IC-CODE-006')?.title).toBe('Favor immutable objects');
-	});
-
-	it('returns undefined for unknown ids', () => {
-		const catalog = new CodexCatalog(sampleRules);
-		expect(catalog.get('IC-UNKNOWN-999')).toBeUndefined();
-	});
-
 	it('wraps rules in a versioned payload', () => {
 		const catalog = new CodexCatalog(sampleRules);
 		expect(catalog.payload()).toEqual({ version: 1, count: 2, rules: sampleRules });

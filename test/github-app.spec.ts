@@ -21,6 +21,14 @@ function fakeFetch(status: number, body: unknown): FetchFn {
 	return async () => new Response(JSON.stringify(body), { status });
 }
 
+function deferred<T>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	const promise = new Promise<T>((res) => {
+		resolve = res;
+	});
+	return { promise, resolve };
+}
+
 function capturingFetch(status: number, body: unknown): { fetchFn: FetchFn; calls: { url: string; init?: RequestInit }[] } {
 	const calls: { url: string; init?: RequestInit }[] = [];
 	const fetchFn: FetchFn = async (input, init) => {
@@ -71,6 +79,31 @@ describe('GitHubAppAuth', () => {
 		const second = await auth.getInstallationToken();
 
 		expect(first).toBe('ghs_token_1');
+		expect(second).toBe('ghs_token_2');
+		expect(callCount).toBe(2);
+	});
+
+	it('coalesces concurrent refreshes after the cached token expires', async () => {
+		let now = 1000;
+		let callCount = 0;
+		const releaseRefresh = deferred<void>();
+		const fetchFn: FetchFn = async () => {
+			callCount++;
+			if (callCount === 2) {
+				await releaseRefresh.promise;
+			}
+			return new Response(JSON.stringify({ token: `ghs_token_${callCount}` }), { status: 201 });
+		};
+		const auth = new GitHubAppAuth(APP_ID, testPrivateKeyPem, INSTALLATION_ID, fetchFn, () => now);
+
+		await auth.getInstallationToken();
+		now += 51 * 60;
+		const firstRefresh = auth.getInstallationToken();
+		const secondRefresh = auth.getInstallationToken();
+		releaseRefresh.resolve();
+		const [first, second] = await Promise.all([firstRefresh, secondRefresh]);
+
+		expect(first).toBe('ghs_token_2');
 		expect(second).toBe('ghs_token_2');
 		expect(callCount).toBe(2);
 	});

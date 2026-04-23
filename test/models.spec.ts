@@ -107,6 +107,8 @@ describe('ModelCatalog', () => {
 						},
 					},
 				},
+				openai: modelsDevResponse.openai,
+				'cloudflare-workers-ai': modelsDevResponse['cloudflare-workers-ai'],
 			};
 			const catalog = new ModelCatalog(env.MODELS, fakeFetch(200, response));
 
@@ -117,16 +119,18 @@ describe('ModelCatalog', () => {
 			expect(models['claude-sonnet-4-5'].experimental).toBe(false);
 		});
 
-		it('handles a provider missing from the response', async () => {
+		it('keeps the last successful catalog when a provider is missing from the response', async () => {
+			await env.MODELS.put('models:anthropic', JSON.stringify(modelsDevResponse.anthropic.models));
+			await env.MODELS.put('models:openai', JSON.stringify(modelsDevResponse.openai.models));
 			const partial = { anthropic: modelsDevResponse.anthropic };
 			const catalog = new ModelCatalog(env.MODELS, fakeFetch(200, partial));
 
-			await catalog.refresh();
+			await expect(catalog.refresh()).rejects.toThrow('models.dev response missing provider openai');
 
 			const anthropicRaw = await env.MODELS.get('models:anthropic');
 			const openaiRaw = await env.MODELS.get('models:openai');
 			expect(JSON.parse(anthropicRaw!)).toEqual(modelsDevResponse.anthropic.models);
-			expect(openaiRaw).toBeNull();
+			expect(JSON.parse(openaiRaw!)).toEqual(modelsDevResponse.openai.models);
 		});
 	});
 
