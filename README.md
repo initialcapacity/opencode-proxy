@@ -1,3 +1,5 @@
+> **Retired October 22, 2026:** The icap.dev service and its exclusive Cloudflare resources were selected for deletion. CI retains validation only; automatic deployment is removed. Do not redeploy this service without a new explicit decision.
+
 # OpenCode Proxy
 
 A pair of Cloudflare Workers that give developers at [Initial Capacity](https://initialcapacity.io)
